@@ -1,0 +1,119 @@
+#!/bin/sh /etc/rc.common
+
+START=55
+
+pctl_add_mac_rule() {
+	local rules="$1"
+	local prefix="$2"
+	local suffix="$3"
+	mac_addrs=`cat /etc/config/parentctl | grep src_mac | sort -u | awk -F " " '{print $3}'`
+	mac_nums=`cat /etc/config/parentctl | grep src_mac | sort -u | wc -l`
+
+	for i in `seq 1 ${mac_nums}`;
+	do
+		macaddr=`echo ${mac_addrs} | awk -v t="${i}" -F " " '{print $t}'`
+		append $rules "$prefix" "$N"
+		append $rules "-m mac --mac-source $macaddr -m time --kerneltz"
+		append $rules "$suffix"
+	done
+}
+
+pctl_add_rule() {
+        local cfg="$1"
+        local rules="$2"
+        local prefix="$3"
+        local suffix="$4"
+        local srcmac weekdays starttime stoptime range
+
+        config_get srcmac $cfg src_mac
+        config_get weekdays $cfg weekdays
+        config_get starttime $cfg start_time
+        config_get stoptime $cfg stop_time
+
+        #echo "$srcmac $weekdays $starttime $stoptime"
+
+        if [ -z "$srcmac" ]; then
+                return 1
+        fi
+
+        append $rules "$prefix" "$N"
+
+        append $rules "-m mac --mac-source $srcmac"
+
+        if [ -n "$weekdays" ]; then
+                append range "--weekdays $weekdays"
+        fi
+
+        if [ -n "$starttime" ]; then
+                append range "--timestart $starttime"
+        fi
+
+        if [ -n "$stoptime" ]; then
+                if [ "24:0"x == ${stoptime}x ]; then
+                    stoptime="23:59:59"
+                fi
+                    append range "--timestop $stoptime"
+        fi
+
+        if [ -n "$range" ]; then
+                append $rules "-m time --kerneltz"
+                append $rules "$range"
+        fi
+
+        append $rules "$suffix"
+}
+
+start_firewall() {
+        config_load parentctl
+        config_get_bool pctl_enable config enabled 0
+
+        if [ "$pctl_enable" != "1" ]; then
+                stop_firewall
+                return
+        fi
+
+	if [ ! -f "/tmp/ntpdgettimeok" ];then
+		stop_firewall
+		return
+	fi
+
+        local pctl_rules
+        local pctl_mac_rules
+        local prefix="iptables -t filter -w -I parent_control"
+        local suffix="-j ACCEPT"
+        local suffix_reject="-j REJECT"
+        config_foreach pctl_add_rule setting pctl_rules "$prefix" "$suffix"
+
+        pctl_add_mac_rule pctl_mac_rules "$prefix" "$suffix_reject"
+
+        stop_firewall
+cat << EOF
+iptables -t filter -w -N parent_control
+iptables -t filter -w -I FORWARD -j parent_control
+$pctl_mac_rules
+$pctl_rules
+EOF
+}
+
+stop_firewall() {
+        iptables -t filter -S |
+                grep '\-j parent_control' |
+                sed -e 's/^-A/iptables -t filter -w -D/' | sh
+        iptables -t filter -S |
+                grep '^-N parent_control' |
+                sed -e '/^-N/{s/^-N/-X/;H;s/-X/-F/}' -e '${p;g}' |
+                sed -n -e 's/^./iptables -t filter &/p' | sh
+}
+
+start() {
+        start_firewall | sh
+}
+
+stop() {
+        stop_firewall
+}
+
+restart() {
+	stop
+	start
+}

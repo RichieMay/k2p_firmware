@@ -1,0 +1,9 @@
+Package: libnetfilter-conntrack
+Version: 1.0.3-1
+Depends: libc, libnfnetlink, kmod-nf-conntrack-netlink, libmnl
+Source: package/libs/libnetfilter-conntrack
+Section: libs
+Maintainer: Jo-Philipp Wich <jow@openwrt.org>
+Architecture: ramips_1004kc
+Installed-Size: 30282
+Description:  unknown

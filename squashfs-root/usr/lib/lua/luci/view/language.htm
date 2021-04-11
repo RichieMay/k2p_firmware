@@ -1,0 +1,65 @@
+<script type="text/javascript">
+(function(){
+	if (ROUTER.languageList.length > 1){
+		$("ul.language").show();
+		$("#HelpIcon").addClass("right-width");
+	}else{
+		$("ul.language").hide();
+		$("#HelpIcon").removeClass("right-width");
+	}
+
+	var curLang = ROUTER.lang;
+	var langListUsed = LANGLIST.getLangList();
+
+	for (var i = 0; i < langListUsed.length; i++){
+		if (langListUsed[i]["value"] == curLang){
+			$("#Language").text(langListUsed[i]["name"]);
+		}
+	}
+
+	initList("Language", langListUsed, function(val){
+		for (var i = 0; i < langListUsed.length; i++){
+			if(val == "auto"){
+				val = langDetection();
+				break;
+			}
+
+			if (langListUsed[i]["value"] == val){
+				$("#Language").text(langListUsed[i]["name"]);
+				break;
+			}
+		}
+
+		var data = {};
+		data.lang = val;
+
+		apiSetWithUrl("/welcome/config", data, function(ret){
+			var code = ret[ERR_CODE];
+			if (E_NONE == code){
+				window.location.reload();
+			}else{
+				$.setTimeout(function(){
+					errHandle(code);
+				}, 800);
+			}
+		});
+	});
+
+	function errHandle(code){
+		switch(code){
+		case E_NONE:
+			return false;
+		default:
+			showNote(errStr.unknownErr + code);
+			break;
+		}
+
+		return true;
+	}
+})();
+</script>
+<ul class="language">
+	<li class="language-item">
+		<span id="Language"></span>
+	</li>
+</ul>

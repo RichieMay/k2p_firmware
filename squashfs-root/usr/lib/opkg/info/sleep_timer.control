@@ -1,0 +1,8 @@
+Package: sleep_timer
+Version: 1
+Depends: libc, phicomm_libs
+Source: package/phicomm/sleep_timer
+Section: Phicomm Properties
+Architecture: ramips_1004kc
+Installed-Size: 3191
+Description:  unknown

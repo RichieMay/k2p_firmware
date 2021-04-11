@@ -1,0 +1,9 @@
+Package: luci-app-dhcp-server
+Version: 1.0.0-1
+Depends: libc
+Source: /home/jenkins/jenkins_job/workspace/SOP_K2P_V5.2/luci-ux
+Section: luci
+Maintainer: LuCI Development Team <luci@lists.subsignal.org>
+Architecture: ramips_1004kc
+Installed-Size: 9628
+Description:  unknown

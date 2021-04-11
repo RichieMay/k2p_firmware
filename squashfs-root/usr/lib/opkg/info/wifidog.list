@@ -1,0 +1,10 @@
+/etc/hotplug.d/ip_event/20-sharedwifi_manage
+/usr/bin/wifidog
+/etc/uci-defaults/99_sharedwifi
+/etc/wifidog/wifidog-msg.html
+/etc/wifidog/wifidog.conf
+/etc/config/reward_device
+/etc/wifidog/phicomm.crt
+/etc/init.d/sharedwifi
+/usr/bin/sharedwifi_daemon.sh
+/etc/config/sharedwifi

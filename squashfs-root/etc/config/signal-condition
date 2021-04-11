@@ -1,0 +1,2 @@
+config signal-conditon 'config'
+	option power 3

@@ -1,0 +1,1064 @@
+<style type="text/css">div.diagnose-con{position:relative;margin:20px 50px 10px}span.switch{margin-right:0;display:inline-block!important}ul.state-con{margin-left:35%;border-bottom:1px solid #DDD}li.state-con{font-size:0;height:45px;line-height:45px;vertical-align:middle}i.state-icon{float:right;font-size:30px;line-height:45px}i.icon_select_on{display:none;color:#5dbd38}i.icon_remind{display:none;color:#ff0101}span.state-desc{vertical-align:top;color:#403f44;font-size:14px}li.sub-state{text-align:right}li.sub-state span.state-desc{float:left;margin-left:150px}li.border-bottom{border-bottom:1px solid #DDD}li.sub-state span.state-good{color:#9c9c9c}li.sub-state span.state-normal{color:#f68132}li.sub-state span.state-bad{color:#ff0101}li.state-good span.state-good{display:inline}li.state-good span.switch{visibility:hidden}li.state-good span.state-normal{display:inline}li.state-good span.state-bad{display:none}li.state-bad span.state-good{display:none}li.state-bad span.state-normal{display:none}li.state-bad span.state-bad{display:inline}span.init-value{float:right;color:#9c9c9c;font-size:14px}span.click-slide{cursor:pointer}a.btn-modify{color:#ff0101;float:right;font-size:14px;text-decoration:none}li.wan-error-info{position:relative;margin-bottom:5px}li.wan-error-info a.btn-modify{position:absolute;top:0;right:0}p.error-detail{color:#ff0101;font-size:14px;margin-left:150px;margin-right:50px}div.running-con{position:absolute;width:35%;text-align:center}.running-status{position:relative;margin:50px auto 30px;color:#03cb9c;text-align:center}.running-circle{display:inline-block;color:#03cb9c;width:170px;height:170px;border-radius:50%;background-color:#03cb9c;background-image:url(/luci-static/images/circle.png?_=20180420151033);background-size:contain}.run-animation{-webkit-animation:circle 2s infinite linear;-moz-animation:circle 2s infinite linear;-ms-animation:circle 2s infinite linear;animation:circle 2s infinite linear}@-webkit-keyframes circle{0%{-webkit-transform:rotate(0deg)}100%{-webkit-transform:rotate(360deg)}}@-moz-keyframes circle{0%{-moz-transform:rotate(0deg)}100%{-moz-transform:rotate(360deg)}}@-ms-keyframes circle{0%{-ms-transform:rotate(0deg)}100%{-ms-transform:rotate(360deg)}}@keyframes circle{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}.state-ok{color:#03cb9c!important}.state-ok div.running-circle{background-color:#03cb9c}.state-middle{color:#f68132!important}.state-middle div.running-circle{background-color:#f68132}.state-warn{color:#ee5859!important}.state-warn div.running-circle{background-color:#ee5859}p.init-state{position:absolute;top:75px;width:100%;font-size:18px}p.score{position:absolute;top:60px;font-size:18px;width:100%}span.score-num{font-family:sans-serif;font-size:40px}span.score{font-size:14px}div.running-con p.tips{font-size:14px;color:#403f44}input.start{color:#FFF;bottom:.15rem;right:.45rem;position:absolute;background-color:transparent;width:2.75rem;height:.75rem;border-radius:.5rem;font-size:.45rem;border:1px solid}li.state-normal span.state-bad{color:#f68132}p.tips span.err-msg{color:#ff0101}p.tips span.warn-msg{color:#f68132}</style><script type="text/javascript">
+(function(){
+	<%
+		local para = {dev_feature = {app_pc = {}}}
+		local result = tpl_get_data(para, true)
+	-%>
+
+	var result = <%=result%>;
+	var appInfo = result[K_MODULE].dev_feature.app_pc.installed;
+
+	var score = 100;
+	var errNum = 0;
+	var warnNum = 0;
+	var apiModule = "diagnosis";
+
+	$("#Start").click(function(){
+		$(this).hide();
+		start();
+	});
+
+	function checkUpgrade(){
+		var para = {
+			system:{upgrade_info:{action:"start"}}
+		};
+
+		apiGetWithModule(apiModule, para);
+	}
+
+	function start(){
+		score = 100;
+		errNum = 0;
+		warnNum = 0;
+
+		$("p.init-state").hide();
+		$("p.score").show();
+		$("ul.state-con .init-value").show();
+		$("ul.state-con .state-icon").hide();
+		$("ul.state-con .click-slide").hide();
+		$("ul.state-con li.wan-error-info").hide();
+		$("div.running-circle").addClass("run-animation");
+		$("p.tips").text("");
+		$("li.sub-state").hide();
+
+		setScore(score, 0);
+		//checkUpgrade();	// 通知后台进行新版本检测
+		getWispState();
+	}
+
+	function setScore(score, type){
+		$("span.score-num").text(score);
+
+		if (score > 70){
+			$(".running-status").removeClass("state-middle state-warn").addClass("state-ok");
+		}else if (score > 30){
+			$(".running-status").removeClass("state-ok state-warn").addClass("state-middle");
+		}else{
+			$(".running-status").removeClass("state-ok state-middle").addClass("state-warn");
+		}
+
+		switch(type){
+		case 1:
+			errNum++;
+			break;
+		case 2:
+			warnNum++;
+			break;
+		case 0:
+		default:
+			break;
+		}
+
+		if (warnNum > 0 || errNum > 0){
+			var tips = '<span class="err-msg">' + errNum + label.problems+ '</span>' + '<span class="warn-msg">' + warnNum + label.warmTips+ '</span>';
+			$("p.tips").html(tips);
+		}else{
+			$("p.tips").text(label.noProblem);
+		}
+	}
+	var wispOn = 0;
+	var wispBand = 0;
+
+	function getWispState(){
+		var para = {
+			wisp:{config:null}
+		};
+		apiGetWithModule(apiModule, para, function(data){
+			var state = data[K_MODULE]["wisp"];
+			var enable = state.config.enable;
+			wispBand =  state.config.band;
+
+			getWanLinkState(enable);
+			wispOn = enable;
+		});
+	}
+
+	function getWanLinkState(wispOn){
+		$("#NetStateHead .init-value").hide();
+		$("#NetStateCon").show();
+
+		var para = {
+			network:{wan_status:null}
+		};
+
+		apiGetWithModule(apiModule, para, function(data){
+			var wanStatus = data[K_MODULE]["network"]["wan_status"];
+
+			var code = wanStatus["status_code"];
+			if("1" == code){
+				$("#WanState").removeClass("state-good").addClass("state-bad");
+				$("#WanState span.state-desc").removeClass("state-good").addClass("state-bad");
+				$("#WanError").show();
+				$("#WanState i.icon_remind").show();
+
+				if("1" == wispOn){
+					$("#WanState span.state-desc").text(label.wispUnlink);
+					$("#WanErrDetail").html(label.wispUnlinkError);
+				}else{
+					$("#WanState span.state-desc").text(label.wanUnlink);
+					$("#WanErrDetail").html(label.wanUnlinkError);
+				}
+
+				$("#NetState").hide().removeClass("state-good").addClass("state-bad");
+				$("#UrlAnalysisState").hide().removeClass("state-good").addClass("state-bad");
+				$("#SpeedDetectState").hide().removeClass("state-good").addClass("state-bad");
+				$("#WanState").removeClass("border-bottom");
+
+				score -= 25;
+				setScore(score, 1);
+				$("#WanState").show();
+				$.setTimeout(getPowerState, 1000);
+			}else{
+				$("#WanState").removeClass("state-bad").addClass("state-good");
+				$("#WanState span.state-desc").removeClass("state-bad").addClass("state-good");
+				$("#WanState i.icon_select_on").show();
+
+				if("1" == wispOn){
+					$("#WanState span.state-desc").text(label.wispLink);
+				}else{
+					$("#WanState span.state-desc").text(label.wanLink);
+				}
+				$("#WanState").addClass("border-bottom");
+				setScore(score, 0);
+				$("#WanState").show();
+				initInternetState(wanStatus);
+			}
+		});
+	}
+
+	function initInternetState(wanStatus){
+		var status = wanStatus["internet_status"];
+		var protocol = wanStatus["protocol"];
+		var protocolLabel = "";
+
+		if ("1" == status){
+			switch(protocol){
+			case "static":
+				protocolLabel = label.staicIpSuccess;
+				break;
+			case "dhcp":
+				protocolLabel = label.dhcpSuccess;
+				break;
+			case "pppoe":
+				protocolLabel = label.pppoeSuccess;
+				break;
+			case "pptp":
+				protocolLabel = label.pptpSuccess;
+				break;
+			case "l2tp":
+				protocolLabel = label.l2tpSuccess;
+				break;
+			}
+
+			stateGood("NetState", protocolLabel);
+
+			$("#NetworkError").hide();
+			$("#NetState").addClass("border-bottom");
+			$("#NetState").show();
+			getUrlAnalysisState();
+		}else{
+			/* status_code:
+			  0: okay,
+			  1: wan port not link,
+			  2: no wan address,
+			  3: gateway no response,
+			  4: no DNS address,
+			  5: DNS no response,
+			  6: custom DNS error,
+			  7: DHCP server no response,
+			  8: getting DHCP IP,
+			  9: PPPoE diaging,
+			  10: PPPoE server no response,
+			  646~649: PPPOE error,
+			  678: PPPOE server error,
+			  691: PPPOE account invalid,
+			  709: PPPOE password invalid
+			*/
+			var code = parseInt(wanStatus["status_code"], 10);
+			var errorInfo = "";
+
+			switch(protocol){
+			case "static":
+				protocolLabel = label.staicIpFail;
+				errorInfo = label.staicIpErr;
+				break;
+			case "dhcp":
+				protocolLabel = label.dhcpFail;
+				switch(code){
+				case 3:
+					errorInfo = label.wanGatewayErr;
+					break;
+				case 4:
+					errorInfo = label.wanDnsErr;
+					break;
+				case 5:
+					errorInfo = label.wanNetErr;
+					break;
+				case 6:
+					errorInfo = label.wanDnsCfgErr;
+					break;
+				case 2:
+				case 7:
+				case 8:
+				default:
+					errorInfo = label.wanDhcpErr;
+					break;
+				}
+
+				break;
+			case "pppoe":
+				protocolLabel = label.pppoeFail;
+				switch(code){
+				case 709:
+					errorInfo = label.pppoePwdErr;
+					break;
+				case 691:
+					errorInfo = label.pppoeAccountErr;
+					break;
+				case 678:
+					errorInfo = label.pppoeSrvErr;
+					break;
+				case 646:
+				case 647:
+				case 648:
+				case 649:
+					errorInfo = label.pppoeCodeL + code + label.pppoeCodeR;
+					break;
+				case 2:
+					errorInfo = label.wanFreedErr;
+					break;
+				case 3:
+					errorInfo = label.wanGatewayErr;
+					break;
+				case 4:
+					errorInfo = label.wanDnsErr;
+					break;
+				case 5:
+					errorInfo = label.wanNetErr;
+					break;
+				case 6:
+					errorInfo = label.wanDnsCfgErr;
+					break;
+				case 9:
+					protocolLabel = label.pppoeDialing;
+					errorInfo = "";
+					break;
+				case 10:
+					errorInfo = label.pppoeNoResponse;
+					break;
+				}
+				break;
+			case "pptp":
+				protocolLabel = label.pptpFail;
+				errorInfo = label.wanPptpErr;
+				break;
+			case "l2tp":
+				protocolLabel = label.l2tpFail;
+				errorInfo = label.wanL2tpErr;
+				break;
+			default:
+				console.log("Warning:protocol=" + protocol);
+			}
+
+			stateBad("NetState", protocolLabel);
+
+			$("#NetworkError").show();
+			$("#NetworkErrDetail").html(errorInfo);
+			$("#UrlAnalysisState").hide().removeClass("state-good").addClass("state-bad");
+			$("#SpeedDetectState").hide().removeClass("state-good").addClass("state-bad");
+			$("#NetState").removeClass("border-bottom");
+			$("#NetState").show();
+			score -= 20;
+			setScore(score, 1);
+			$.setTimeout(getPowerState, 1000);
+		}
+	}
+
+	function stateBad(id, label){
+		var thisObj = "#" + id;
+
+		$(thisObj).removeClass("state-good state-normal").addClass("state-bad");
+		$(thisObj + " span.state-desc").text(label).removeClass("state-good state-normal").addClass("state-bad");
+		$(thisObj + " a.btn-modify").show();
+		$(thisObj + " i.icon_select_on").hide();
+	}
+
+	function stateNormal(id, label){
+		var thisObj = "#" + id;
+
+		$(thisObj).removeClass("state-good").addClass("state-normal");
+		$(thisObj + " span.state-desc").text(label).removeClass("state-good").addClass("state-normal");
+		$(thisObj + " a.btn-modify").show().addClass("state-middle");
+		$(thisObj + " i.icon_select_on").hide();
+	}
+
+	function stateGood(id, label){
+		var thisObj = "#" + id;
+
+		$(thisObj).removeClass("state-normal state-bad").addClass("state-good");
+		$(thisObj + " span.state-desc").text(label).removeClass("state-normal state-bad").addClass("state-good");
+		$(thisObj + " a.btn-modify").hide();
+		$(thisObj + " i.icon_select_on").show();
+	}
+
+	function getUrlAnalysisState(){
+		var para = {
+			url_analysis:{config:null}
+		};
+		apiGetWithModule(apiModule, para, function(data){
+			var info = data[K_MODULE]["url_analysis"];
+			var state = info.config.state;
+
+			if("1" == state){
+				stateGood("UrlAnalysisState", label.urlAnalysisSuccess);
+			}else{
+				stateBad("UrlAnalysisState", label.urlAnalysisFail);
+
+				score -= 10;
+				setScore(score, 1);
+			}
+			$("#UrlAnalysisState").show();
+			getSpeedDetectState();
+		});
+	}
+
+	function getSpeedDetectState(){
+		var para = {
+			speed_detect:{config:null}
+		};
+		apiGetWithModule(apiModule, para, function(data){
+			var state = data[K_MODULE]["speed_detect"];
+			var surf_rate = state.config.surf_rate;
+
+			if("1" == surf_rate){
+				$("#SpeedDetectState").removeClass("state-bad state-normal").addClass("state-good");
+				$("#SpeedDetectState span.state-desc").text(label.speedQuick).removeClass("state-bad state-normal").addClass("state-good");
+				$("#SpeedDetectState i.icon_select_on").show();
+			}else if("2" == surf_rate){
+				$("#SpeedDetectState").removeClass("state-good state-bad").addClass("state-normal");
+				$("#SpeedDetectState span.state-desc").text(label.speedNormal).removeClass("state-good state-bad").addClass("state-normal");
+				$("#SpeedDetectState i.icon_select_on").show().addClass("state-middle");
+			}else{
+				$("#SpeedDetectState").removeClass("state-good state-normal").addClass("state-bad");
+				$("#SpeedDetectState span.state-desc").text(label.speedSlow).removeClass("state-good state-normal").addClass("state-bad");
+				$("#SpeedDetectState i.icon_remind").show();
+			}
+			$("#SpeedDetectState").show();
+			$.setTimeout(getPowerState, 1000);
+		});
+	}
+
+	function getPowerState(){
+		$("#WifiStateHead .init-value").hide();
+		$("#WifiStateCon").show();
+		var signalCondition = 0;
+
+		for(var i = 0; i < appInfo.length; i++){
+			if (appInfo[i] == "signal-condition") {
+				signalCondition = 1;
+			}
+		}
+
+		if(signalCondition == 1){
+			var para = {
+				signal_condition:{config:null}
+			};
+			apiGetWithModule(apiModule, para, function(data){
+				var signal = data[K_MODULE]["signal_condition"];
+				var power = signal.config.signal_intensity;
+
+				if(power == 3){//穿墙模式
+					$("#WifiSignal").removeClass("state-normal").addClass("state-good");
+					$("#WifiSignal span.state-desc").text(label.signalConditionStrong).removeClass("state-normal").addClass("state-good");
+					$("#WifiSignal a.btn-modify").hide();
+					$("#WifiSignal i.icon_select_on").show();
+				}else if(power == 2){
+					$("#WifiSignal").removeClass("state-good").addClass("state-normal");
+					$("#WifiSignal span.state-desc").text(label.signalConditionMid).removeClass("state-good").addClass("state-normal");
+					$("#WifiSignal a.btn-modify").show().addClass("state-middle");
+					$("#WifiSignal i.icon_select_on").hide();
+					score -= 2;
+					setScore(score, 2);
+				}else{
+					$("#WifiSignal").removeClass("state-good").addClass("state-normal");
+					$("#WifiSignal span.state-desc").text(label.signalConditionWeak).removeClass("state-good").addClass("state-normal");
+					$("#WifiSignal a.btn-modify").show().addClass("state-middle");
+					$("#WifiSignal i.icon_select_on").hide();
+					score -= 5;
+					setScore(score, 2);
+				}
+				$("#WifiSignal").show();
+			});
+		}else{
+			$("#WifiSignal").hide();
+		}
+		getWifiState();
+	}
+
+	function getWifiState(){
+		var para = {
+			wireless:{wifi_2g_config:null, wifi_5g_config:null}
+		};
+
+		apiGetWithModule(apiModule, para, function(data){
+			var wireless = data[K_MODULE]["wireless"];
+			var wifi2G = wireless.wifi_2g_config;
+			var wifi5G = wireless.wifi_5g_config;
+
+			if(wifi2G.enable == 0){//2.4G无线未开启
+				score -= 5;
+				setScore(score, 2);
+				$("#Wifi2G").removeClass("state-good").addClass("state-normal");
+				$("#Wifi2G i.icon_select_on").hide();
+
+				initSwitch("SwitchWifi2G", 0, function(state, init){
+					if (!init){
+						var para = {};
+						para.wireless = {};
+						para.wireless.wifi_2g_config = {enable:state + ""};
+
+						showLoading(label.saveWifi);
+						apiSetWithModule("wireless", para, function(ret){
+							var time = getMaxWaitTime(ret);
+							$.setTimeout(function(){
+								closeLoading();
+							}, time * 1000);
+						});
+					}
+				});
+			}else{
+				$("#Wifi2G").removeClass("state-normal").addClass("state-good");
+				$("#Wifi2G i.icon_select_on").show();
+			}
+
+			$("#Wifi2G").show();
+
+			if(wifi5G.enable == 0){//5G无线未开启
+				score -= 5;
+				setScore(score, 2);
+				$("#Wifi5G").removeClass("state-good").addClass("state-normal");
+				$("#Wifi5G i.icon_select_on").hide();
+				$("#Wifi5G").removeClass("border-bottom");
+
+				initSwitch("SwitchWifi5G", 0, function(state, init){
+					if (!init){
+						var para = {};
+						para.wireless = {};
+						para.wireless.wifi_5g_config = {enable:state + ""};
+
+						showLoading(label.saveWifi);
+						apiSetWithModule("wireless", para, function(ret){
+							var time = getMaxWaitTime(ret);
+							$.setTimeout(function(){
+								closeLoading();
+							}, time * 1000);
+						});
+					}
+				});
+			}else{
+				$("#Wifi5G").removeClass("state-normal").addClass("state-good");
+				$("#Wifi5G i.icon_select_on").show();
+				$("#Wifi5G").addClass("border-bottom");
+			}
+
+			$("#Wifi5G").show();
+
+			if(wifi2G.enable == 0 && wifi5G.enable == 0){
+				$("#Wifi2GChannel").removeClass("state-good").addClass("state-normal");
+				$("#Wifi5GChannel").removeClass("state-good").addClass("state-normal");
+				$("#Wifi2GDevice").removeClass("state-good").addClass("state-normal");
+				$("#Wifi5GDevice").removeClass("state-good").addClass("state-normal");
+
+				$.setTimeout(function(){
+					initWifiPwdState(wireless);
+				}, 2000);
+			}else{
+				getChannel2GState(wireless);
+			}
+		});
+	}
+
+	function getChannel2GState(wireless){
+		var para = {
+			wireless_channel:{channel_2g_status:null}
+		};
+
+		var wifi2G = wireless.wifi_2g_config;
+
+		if(wifi2G.enable == 1 && (wispOn == 0 || (wispOn == 1 && wispBand == 1))){
+			apiGetWithModule(apiModule, para, function(data){
+				var state = data[K_MODULE]["wireless_channel"];
+				var crowd2g = state.channel_2g_status.crowd;
+
+				if(crowd2g == 1){
+					stateNormal("Wifi2GChannel", label.wifi2GChannelAbnormal);
+
+					score -= 5;
+					setScore(score, 2);
+				}else{
+					stateGood("Wifi2GChannel", label.wifi2GChannelNormal);
+				}
+
+				$("#Wifi2GChannel").show();
+
+				getChannel5GState(wireless);
+			});
+		}else{
+			getChannel5GState(wireless);
+		}
+	}
+
+	function getChannel5GState(wireless){
+		var para = {
+			wireless_channel:{channel_5g_status:null}
+		};
+		var wifi5G = wireless.wifi_5g_config;
+
+		if(wifi5G.enable == 1 && (wispOn == 0 || (wispOn == 1 && wispBand == 0))){
+			apiGetWithModule(apiModule, para, function(data){
+				var state = data[K_MODULE]["wireless_channel"];
+				var crowd5g = state.channel_5g_status.crowd;
+
+				if(crowd5g == 1){
+					stateNormal("Wifi5GChannel", label.wifi5GChannelAbnormal);
+
+					score -= 5;
+					setScore(score, 2);
+				}else{
+					stateGood("Wifi5GChannel", label.wifi5GChannelNormal);
+				}
+
+				$("#Wifi5GChannel").show();
+
+				getDeviceNum(wireless);
+			});
+		}else{
+			getDeviceNum(wireless);
+		}
+	}
+
+	function getDeviceNum(wireless){
+		var para = {
+			device_manage:{client_list:null}
+		};
+
+		apiGetWithModule(apiModule, para, function(data){
+			var list = data[K_MODULE]["device_manage"];
+			var clients = list.client_list;
+			var len = clients.length;
+			var list2GLength = 0;
+			var list5GLength = 0;
+			for(var i = 0; i < len; i++){
+				if (0 == clients[i].online_status || 0== clients[i].internet_enable){
+					// Don't show offline client
+					continue;
+				}
+
+				if(1 == clients[i].device_type){
+					list2GLength++;
+				}
+				if(2 == clients[i].device_type){
+					list5GLength++;
+				}
+			}
+
+			stateGood("Wifi2GDevice", label.wifi2GDevice + list2GLength);
+			stateGood("Wifi5GDevice", label.wifi5GDevice + list5GLength);
+
+			var wifi2G = wireless.wifi_2g_config;
+			var wifi5G = wireless.wifi_5g_config;
+			if(wifi2G.enable == 1){
+				$("#Wifi2GDevice").show();
+			}else{
+				$("#Wifi2GDevice").removeClass("state-good").addClass("state-bad");
+			}
+
+			if(wifi5G.enable == 1){
+				$("#Wifi5GDevice").show();
+			}else{
+				$("#Wifi5GDevice").removeClass("state-good").addClass("state-bad");
+			}
+			$.setTimeout(function(){
+				initWifiPwdState(wireless);
+			}, 2000);
+		});
+	}
+
+	function getSafety(pwd){
+		var safety = 0;
+
+		if (/[A-Z]/g.test(pwd)){
+			safety += 1;
+		}
+
+		if (/[a-z]/g.test(pwd)){
+			safety += 1;
+		}
+
+		if (/[0-9]/g.test(pwd)){
+			safety += 1;
+		}
+
+		if (/[^0-9a-zA-Z]/g.test(pwd)){
+			safety += 3;
+		}
+
+		return safety;
+	}
+
+	function initWifiPwdState(wireless){
+		$("#SafeStateHead .init-value").hide();
+		$("#SafeStateCon").show();
+
+		var pwd2G = wireless.wifi_2g_config.password;
+		var safety2G = getSafety(pwd2G);
+		if(safety2G <= 1){
+			score -= 10;
+			setScore(score, 2);
+			$("#WifiPwd2G").removeClass("state-good state-bad").addClass("state-normal");
+			$("#WifiPwd2G span.state-desc").text(label.wifi2GPwdState + label.safeStateWeak).removeClass("state-good state-bad").addClass("state-normal");
+			$("#WifiPwd2G a.btn-modify").show().addClass("state-middle");
+			$("#WifiPwd2G i.icon_select_on").hide();
+		}else if(safety2G <= 2){
+			score -= 5;
+			setScore(score, 2);
+			$("#WifiPwd2G").removeClass("state-good state-bad").addClass("state-normal");
+			$("#WifiPwd2G span.state-desc").text(label.wifi2GPwdState + label.safeStateMid).removeClass("state-good state-bad").addClass("state-normal");
+			$("#WifiPwd2G a.btn-modify").show().addClass("state-middle");
+			$("#WifiPwd2G i.icon_select_on").hide();
+		}else{
+			score -= 0;
+			setScore(score, 0);
+			$("#WifiPwd2G").removeClass("state-normal state-bad").addClass("state-good");
+			$("#WifiPwd2G span.state-desc").text(label.wifi2GPwdState + label.safeStateStrong).removeClass("state-normal state-bad").addClass("state-good");
+			$("#WifiPwd2G a.btn-modify").hide();
+			$("#WifiPwd2G i.icon_select_on").show();
+		}
+
+		$("#WifiPwd2G").show();
+
+		var pwd5G = wireless.wifi_5g_config.password;
+		var safety5G = getSafety(pwd5G);
+		if(safety5G <= 1){
+			score -= 10;
+			setScore(score, 2);
+			$("#WifiPwd5G").removeClass("state-good state-bad").addClass("state-normal");
+			$("#WifiPwd5G span.state-desc").text(label.wifi5GPwdState + label.safeStateWeak).removeClass("state-good state-bad").addClass("state-normal");
+			$("#WifiPwd5G a.btn-modify").show().addClass("state-middle");
+			$("#WifiPwd5G i.icon_select_on").hide();
+		}else if(safety5G <= 2){
+			score -= 5;
+			setScore(score, 2);
+			$("#WifiPwd5G").removeClass("state-good state-bad").addClass("state-normal");
+			$("#WifiPwd5G span.state-desc").text(label.wifi5GPwdState + label.safeStateMid).removeClass("state-good state-bad").addClass("state-normal");
+			$("#WifiPwd5G a.btn-modify").show().addClass("state-middle");
+			$("#WifiPwd5G i.icon_select_on").hide();
+		}else{
+			score -= 0;
+			setScore(score, 0);
+			$("#WifiPwd5G").removeClass("state-normal state-bad").addClass("state-good");
+			$("#WifiPwd5G span.state-desc").text(label.wifi5GPwdState + label.safeStateStrong).removeClass("state-normal state-bad").addClass("state-good");
+			$("#WifiPwd5G a.btn-modify").hide();
+			$("#WifiPwd5G i.icon_select_on").show();
+		}
+
+		$("#WifiPwd5G").show();
+		getRouterPwdState();
+	}
+
+	function getRouterPwdState(){
+		var para = {
+			security:{status:null}
+		};
+
+		apiGetWithModule(apiModule, para, function(data){
+			var security = data[K_MODULE]["security"];
+			var safety = security.status.safety;
+
+			if(safety == 1){
+				score -= 10;
+				setScore(score, 2);
+				$("#RouterPwd").removeClass("state-good state-bad").addClass("state-normal");
+				$("#RouterPwd span.state-desc").text(label.routerPwdStatus + label.safeStateWeak).removeClass("state-good state-bad").addClass("state-normal");
+				$("#RouterPwd a.btn-modify").show().addClass("state-middle");
+				$("#RouterPwd i.icon_select_on").hide();
+			}else if(safety == 2){
+				score -= 5;
+				setScore(score, 2);
+				$("#RouterPwd").removeClass("state-good state-bad").addClass("state-normal");
+				$("#RouterPwd span.state-desc").text(label.routerPwdStatus + label.safeStateMid).removeClass("state-good state-bad").addClass("state-normal");
+				$("#RouterPwd a.btn-modify").show().addClass("state-middle");
+				$("#RouterPwd i.icon_select_on").hide();
+			}else{
+				score -= 0;
+				setScore(score, 0);
+				$("#RouterPwd").removeClass("state-normal state-bad").addClass("state-good");
+				$("#RouterPwd span.state-desc").text(label.routerPwdStatus + label.safeStateStrong).removeClass("state-normal state-bad").addClass("state-good");
+				$("#RouterPwd a.btn-modify").hide();
+				$("#RouterPwd i.icon_select_on").show();
+			}
+			$("#RouterPwd").show();
+			getRemoteMngState();
+		});
+	}
+
+	function getRemoteMngState(){
+		var para = {
+			firewall:{remote_manager:null}
+		};
+		apiGetWithModule(apiModule, para, function(data){
+			var state = data[K_MODULE]["firewall"];
+			var enable = state.remote_manager.enable;
+
+			if("1" == enable){
+				stateNormal("RemoteState", label.remoteMngOpen);
+
+				score -= 5;
+				setScore(score, 2);
+			}else{
+				stateGood("RemoteState", label.remoteMngClose);
+			}
+			$("#RemoteState").show();
+			getPortForwardState();
+		});
+	}
+
+	function getPortForwardState(){
+		var para = {
+			port_forward:{config:null}
+		};
+		apiGetWithModule(apiModule, para, function(data){
+			var state = data[K_MODULE]["port_forward"];
+			var enable = state.config.enable;
+
+			if("1" == enable){
+				stateNormal("PortForwardState", label.portFwdOpen);
+
+				score -= 5;
+				setScore(score, 2);
+			}else{
+				stateGood("PortForwardState", label.portFwdClose);
+			}
+			$("#PortForwardState").show();
+			getDmzState();
+		});
+	}
+
+	function getDmzState(){
+		var para = {
+			firewall:{dmz:null}
+		};
+		apiGetWithModule(apiModule, para, function(data){
+			var state = data[K_MODULE]["firewall"];
+			var enable = state.dmz.enable;
+
+			if("1" == enable){
+				stateNormal("DmzState", label.dmzOpen);
+
+				score -= 5;
+				setScore(score, 2);
+			}else{
+				stateGood("DmzState", label.dmzClose)
+			}
+			$("#DmzState").show();
+			getUpnpState();
+		});
+	}
+
+	function getUpnpState(){
+		var para = {
+			upnp:{config:null}
+		};
+		apiGetWithModule(apiModule, para, function(data){
+			var state = data[K_MODULE]["upnp"];
+			var enable = state.config.enable;
+
+			if("1" == enable){
+				stateNormal("UpnpState", label.upnpOpen);
+
+				score -= 5;
+				setScore(score, 2);
+			}else{
+				stateGood("UpnpState", label.upnpClose);
+			}
+			$("#UpnpState").show();
+			//$.setTimeout(getUpgradeState, 2000);
+			stateGood("UpgradeDetail", label.swIsNewest);
+			$("#UpgradeDetail").show();
+			$("div.running-circle").removeClass("run-animation");
+			$("li.state-good").slideUp(500);
+			$("ul.state-con .click-slide").show();
+			$("#Start").val(btn.reDiagnose).show();
+
+		});
+	}
+
+	function getUpgradeState(){
+		$("#UpgradeStateHead .init-value").hide();
+		$("#UpgradeStateCon").show();
+
+		var para = {
+			system:{upgrade_info:{action:"get"}}
+		};
+
+		apiGetWithModule(apiModule, para, function(data){
+			var info = data[K_MODULE]["system"]["upgrade_info"];
+
+			var status = info.running_status;
+			if ("2" == status){	// 升级检查完成
+				if ("1" == info.status_code){	// 有新版本
+					stateNormal("UpgradeDetail", label.hasNewSw);
+
+					score -= 5;
+					setScore(score, 2);
+				}else{
+					stateGood("UpgradeDetail", label.swIsNewest);
+				}
+
+				$("#UpgradeDetail").show();
+				$("div.running-circle").removeClass("run-animation");
+				$("li.state-good").slideUp(500);
+				$("ul.state-con .click-slide").show();
+				$("#Start").val(btn.reDiagnose).show();
+			}else{
+				//$.setTimeout(getUpgradeState, 2000);
+			}
+		});
+	}
+
+	initClick("span.click-slide", 1);
+
+	function initClick(filter, state, callback){
+		var state = state || 0;
+		if (1 == state){
+			$(filter).attr("data-value", "1").text(label.expand);
+		}else{
+			$(filter).attr("data-value", "0").text(label.fold);
+		}
+
+		$(filter).click(function(){
+			var val = $(this).attr("data-value");
+			var id = $(this).closest("ul").attr("id");
+			id = id.slice(0, id.length - 4) + "Con";
+
+			if (0 == val){
+				$(this).attr("data-value", "1").text(label.expand);
+				$("#" + id + " li.state-good").slideUp(200);
+				callback && callback(1, false);
+			}else{
+				$(this).attr("data-value", "0").text(label.fold);
+				$("#" + id + " li.state-good").slideDown(200);
+				callback && callback(0, false);
+			}
+		});
+	};
+
+})();
+</script>
+
+<div class="help hidden">
+	<ul class="help-content">
+		<li class="help-head">
+			<img class="app-icon" src="/luci-static/images/app-icon/diagnose.png?_=20180420151033" />
+			<span class="help-title">{%label.diagnose%}</span>
+		</li>
+		<div id="HelpDiagnose">
+		</div>
+	</ul>
+</div>
+<div class="head-con">
+	<img class="app-icon" src="/luci-static/images/app-icon/diagnose.png?_=20180420151033" />
+	<a href="javascript:history.go(-1);" class="head-btn-l">
+		<i class="head-btn icon icon_back"></i>
+		<span class="head-title">{%label.diagnose%}</span>
+	</a>
+</div>
+<div class="set-con diagnose-con">
+	<div class="running-con">
+		<div class="running-status">
+			<div class="running-circle"></div>
+			<p class="init-state">{%label.unDiagnose%}</p>
+			<p class="score hidden"><span class="score-num">100</span><span class="score">{%label.score%}</span></p>
+		</div>
+		<p class="tips"></p>
+	</div>
+	<div class="diagnose-info">
+		<ul class="state-con" id="NetStateHead">
+			<li class="state-con">
+				<span class="state-desc">{%label.internetState%}</span>
+				<span class="init-value">{%label.waittingDiagnose%}</span>
+				<span class="click-slide init-value hidden">{%label.expand%}</span>
+			</li>
+		</ul>
+		<ul class="state-con sub-state" id="NetStateCon">
+			<li class="state-con sub-state border-bottom hidden" id="WanState">
+				<i class="state-icon invisible"></i>
+				<span class="state-desc state-bad">{%label.wanUnlink%}</span>
+				<i class="state-icon icon_select_on"></i><i class="state-icon icon_remind"></i>
+			</li>
+			<li class="wan-error-info hidden" id="WanError">
+				<p id="WanErrDetail" class="error-detail"></p>
+			</li>
+			<li class="state-con sub-state border-bottom hidden" id="NetState">
+				<i class="state-icon invisible"></i>
+				<span class="state-desc state-bad">{%label.netStateFail%}</span>
+				<i class="state-icon icon_select_on"></i>
+				<a href="#/pc/networksetApp" class="btn-modify">{%btn.modify%}</a>
+			</li>
+			<li class="wan-error-info hidden" id="NetworkError">
+				<p id="NetworkErrDetail" class="error-detail"></p>
+			</li>
+			<li class="state-con sub-state border-bottom hidden" id="UrlAnalysisState">
+				<i class="state-icon invisible"></i>
+				<span class="state-desc state-bad">{%label.urlAnalysisFail%}</span>
+				<i class="state-icon icon_select_on"></i>
+				<a href="#/pc/networksetApp" class="btn-modify">{%btn.modify%}</a>
+			</li>
+			<li class="state-con sub-state hidden" id="SpeedDetectState">
+				<i class="state-icon invisible"></i>
+				<span class="state-desc state-bad">{%label.speedSlow%}</span>
+				<i class="state-icon icon_select_on"></i><i class="state-icon icon_remind"></i>
+			</li>
+		</ul>
+		<ul class="state-con" id="WifiStateHead">
+			<li class="state-con">
+				<span class="state-desc">{%label.wifiState%}</span>
+				<span class="init-value">{%label.waittingDiagnose%}</span>
+				<span class="click-slide init-value hidden">{%label.expand%}</span>
+			</li>
+		</ul>
+		<ul class="state-con sub-state" id="WifiStateCon">
+			<li class="state-con sub-state border-bottom hidden" id="WifiSignal">
+				<i class="state-icon invisible"></i>
+				<span class="state-desc state-normal">{%label.signalConditionWeak%}</span>
+				<i class="state-icon icon_select_on"></i>
+				<a href="#/pc/signalConditionApp" class="btn-modify">{%btn.modify%}</a>
+			</li>
+			<li class="state-con sub-state border-bottom hidden" id="Wifi2G">
+				<i class="state-icon invisible"></i>
+				<span class="state-desc state-good hidden">{%label.wifi2GEnable%}</span>
+				<span class="state-desc state-bad">{%label.wifi2GDisable%}</span>
+				<i class="state-icon icon_select_on"></i>
+				<span id="SwitchWifi2G" class="switch state-bad"><i class="switch-circle"></i></span>
+			</li>
+			<li class="state-con sub-state border-bottom hidden" id="Wifi2GChannel">
+				<i class="state-icon invisible"></i>
+				<span class="state-desc state-normal">{%label.wifi2GChannelAbnormal%}</span>
+				<i class="state-icon icon_select_on"></i>
+				<a href="#/pc/wifiSet" class="btn-modify">{%btn.modify%}</a>
+			</li>
+			<li class="state-con sub-state border-bottom hidden" id="Wifi2GDevice">
+				<i class="state-icon invisible"></i>
+				<span class="state-desc state-good">{%label.wifi2GDevice%}</span>
+				<i class="state-icon icon_select_on"></i>
+			</li>
+			<li class="state-con sub-state border-bottom hidden" id="Wifi5G">
+				<i class="state-icon invisible"></i>
+				<span class="state-desc state-good hidden">{%label.wifi5GEnable%}</span>
+				<span class="state-desc state-bad">{%label.wifi5GDisable%}</span>
+				<i class="state-icon icon_select_on"></i>
+				<span id="SwitchWifi5G" class="switch state-bad"><i class="switch-circle"></i></span>
+			</li>
+			<li class="state-con sub-state border-bottom hidden" id="Wifi5GChannel">
+				<i class="state-icon invisible"></i>
+				<span class="state-desc state-normal">{%label.wifi5GChannelAbnormal%}</span>
+				<i class="state-icon icon_select_on"></i>
+				<a href="#/pc/wifiSet" class="btn-modify">{%btn.modify%}</a>
+			</li>
+			<li class="state-con sub-state hidden" id="Wifi5GDevice">
+				<i class="state-icon invisible"></i>
+				<span class="state-desc state-good">{%label.wifi5GDevice%}</span>
+				<i class="state-icon icon_select_on"></i>
+			</li>
+		</ul>
+		<ul class="state-con" id="SafeStateHead">
+			<li class="state-con">
+				<span class="state-desc">{%label.SafeState%}</span>
+				<span class="init-value">{%label.waittingDiagnose%}</span>
+				<span class="click-slide init-value hidden">{%label.expand%}</span>
+			</li>
+		</ul>
+		<ul class="state-con sub-state" id="SafeStateCon">
+			<li class="state-con sub-state border-bottom hidden" id="WifiPwd2G">
+				<i class="state-icon invisible"></i>
+				<span class="state-desc state-normal">{%label.wifi2GPwdWeak%}</span>
+				<i class="state-icon icon_select_on"></i>
+				<a href="#/pc/wifiSet" class="btn-modify">{%btn.modify%}</a>
+			</li>
+			<li class="state-con sub-state border-bottom hidden" id="WifiPwd5G">
+				<i class="state-icon invisible"></i>
+				<span class="state-desc state-normal">{%label.wifi5GPwdWeak%}</span>
+				<i class="state-icon icon_select_on"></i>
+				<a href="#/pc/wifiSet" class="btn-modify">{%btn.modify%}</a>
+			</li>
+			<li class="state-con sub-state border-bottom hidden" id="RouterPwd">
+				<i class="state-icon invisible"></i>
+				<span class="state-desc state-normal">{%label.routerPwdWeak%}</span>
+				<i class="state-icon icon_select_on"></i>
+				<a href="javascript:showModifyPwd();" class="btn-modify">{%btn.modify%}</a>
+			</li>
+			<li class="state-con sub-state border-bottom hidden" id="RemoteState">
+				<i class="state-icon invisible"></i>
+				<span class="state-desc state-normal">{%label.remoteMngOpen%}</span>
+				<i class="state-icon icon_select_on"></i>
+				<a href="#/pc/remoteMngApp" class="btn-modify">{%btn.modify%}</a>
+			</li>
+			<li class="state-con sub-state border-bottom hidden" id="PortForwardState">
+				<i class="state-icon invisible"></i>
+				<span class="state-desc state-normal">{%label.portFwdOpen%}</span>
+				<i class="state-icon icon_select_on"></i>
+				<a href="#/pc/portForwadApp" class="btn-modify">{%btn.modify%}</a>
+			</li>
+			<li class="state-con sub-state border-bottom hidden" id="DmzState">
+				<i class="state-icon invisible"></i>
+				<span class="state-desc state-normal">{%label.dmzOpen%}</span>
+				<i class="state-icon icon_select_on"></i>
+				<a href="#/pc/dmzApp" class="btn-modify">{%btn.modify%}</a>
+			</li>
+			<li class="state-con sub-state hidden" id="UpnpState">
+				<i class="state-icon invisible"></i>
+				<span class="state-desc state-normal">{%label.upnpOpen%}</span>
+				<i class="state-icon icon_select_on"></i>
+				<a href="#/pc/UPnPApp" class="btn-modify">{%btn.modify%}</a>
+			</li>
+		</ul>
+		<ul class="state-con" id="UpgradeStateHead">
+			<li class="state-con">
+				<span class="state-desc">{%label.swUpgradeState%}</span>
+				<span class="init-value">{%label.waittingDiagnose%}</span>
+				<span class="click-slide init-value hidden">{%label.expand%}</span>
+			</li>
+		</ul>
+		<ul class="state-con sub-state" id="UpgradeStateCon">
+			<li class="state-con sub-state hidden" id="UpgradeDetail">
+				<i class="state-icon invisible"></i>
+				<span class="state-desc state-normal">{%label.hasNewSw%}</span>
+				<i class="state-icon icon_select_on"></i>
+				<a href="#/pc/autoUpgradeApp" class="btn-modify">{%btn.upgrade%}</a>
+			</li>
+		</ul>
+		<div class="btn-con">
+			<input id="Start" class="btn" type="button" value="{%btn.clickDiagnose%}" />
+		</div>
+	</div>
+</div>

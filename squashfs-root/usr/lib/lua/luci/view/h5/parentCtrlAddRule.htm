@@ -1,0 +1,416 @@
+<style type="text/css">.second-title{margin:0 auto;height:.889rem;line-height:.889rem;width:100%;background-color:#f0f0f0;position:relative;margin-top:1.067rem}.thrid-title{margin-top:0}.second-title span{font-size:.375rem;line-height:.889rem;margin-left:.45rem;position:absolute}.split-line{height:1px;border:0;border-bottom:1px solid #DDD;margin:0 .333rem}.select-day{font-size:.347rem;float:left;width:25%;display:inline-block}.select-day i{font-size:.7rem;float:left;line-height:1.067rem}.input-time{text-align:center;font-size:.375rem;float:left;display:inline-block}.input-time span{float:left}.input-time input{border:0;width:1rem;border-bottom:1px solid #DDD;font-size:.375rem;text-align:center}.row-div{height:1.067rem;line-height:1.067rem;margin:0 .333rem}.select-day,.second-title,.input-time,.input-time input{color:#585858}div.select-width{width:40%}input.btn-left{width:45%;margin-left:2%}i.icon_select_off{color:#9e9e9e}ul.sel-list{overflow:auto;height:4.4rem}</style>
+<script type="text/javascript">
+(function(){
+	<%
+		local para = {
+			parent_ctrl = {config = {}, parent_list = {}},
+			device_manage = {client_list = {}}
+		}
+
+		local result = tpl_get_data(para, true)
+	-%>
+
+	var parentInfo = <%=result%>;
+	var parentList = parentInfo[K_MODULE].parent_ctrl.parent_list;
+
+	var param = stateman.current.param;
+	var client = {};
+	for (var k in param){
+		var key = decodeURIComponent(k);
+		var val = decodeURIComponent(param[k]);
+		client[key] = val;
+	}
+
+	function getHour(time){
+		var hour = parseInt(time/3600);
+		return hour;
+	}
+
+	function getMinute(time){
+		var minute = parseInt(time%3600);
+		minute = parseInt(minute/60);
+		return minute;
+	}
+
+	function setTimeList(num){
+		if(num < 10){
+			num = "0"+num;
+		}
+		return num;
+	}
+
+	function setTimeData(hour, minute){
+		var time;
+		time = hour * 3600;
+		time += minute * 60;
+		return time;
+	}
+
+	if(client.action == "add"){
+		$(".head-btn-l").attr("href","#/parentCtrlRule/?keyBack=1&mac="+client.mac+"&name="+client.name);
+		$("#Del").hide();
+		initPage(null);
+	}else if(client.action == "edit"){
+		$(".head-btn-l").attr("href","#/parentCtrlRule/?keyBack=1&mac="+client.mac+"&name="+client.name);
+		$("#Del").show();
+		$("#Save").css({width:"45%"});
+		initPage(client);
+	}else{
+		$("#Del").hide();
+		initPage(null);
+	}
+
+	function iconDayClick(curThis){
+		closeNote();
+		var value = $(curThis).attr("value");
+		var tempday = [];
+		tempday.push(curThis);
+		tempday.push($("#AllDay"));
+		var iday = $("#DaySel").find("i[name='day']");
+		var num = 0;
+
+		if (value == 0){
+			for (var j = 0; j < iday.length; j++){
+				num += Number($(iday[j]).attr("value"));
+			}
+			num += 1;
+		}
+
+		for (var i = 0; i < tempday.length; i++){
+			if (value == 1){
+				$(tempday[i]).removeClass("icon_select_on");
+				$(tempday[i]).addClass("icon_select_off");
+				$(tempday[i]).css({color:"#000000"});
+				$(tempday[i]).attr("value","0");
+			}else if(value == 0){
+				if((num == 7 && i == 1)||(i == 0)){
+					$(tempday[i]).removeClass("icon_select_off");
+					$(tempday[i]).addClass("icon_select_on");
+					$(tempday[i]).css({color:"#2AAE1A"});
+					$(tempday[i]).attr("value","1");
+				}
+			}
+		}
+	}
+
+	function initDay(rule){
+		var strDay = rule["cycle"];
+		var iday = $("#DaySel").find("i[name='day']");
+
+		for (var i = 0; i < strDay.length; ++i){
+			if (strDay[i] == "1"){
+				iconDayClick(iday[i]);
+			}
+		}
+	}
+
+	function initTime(rule){
+		var startTime = rule?getHour(rule.start_time):0;
+		var endTime = rule?getHour(rule.end_time):24;
+		var hourList = [];
+		var hour;
+		for (var i = 0; i <= 24; i++){
+			if (i.toString().length == 1){
+				hour = "0" + i + ":00";
+			}else{
+				hour = i + ":00";
+			}
+			hourList.push({name : hour, value : i});
+		}
+		initSelect("StartTime", hourList, startTime);
+		initSelect("EndTime", hourList, endTime);
+
+		if (rule && 0 == startTime && 86400 == endTime){
+			allTimeClick("0");
+		}
+	}
+
+	function allTimeClick(val){
+		closeNote();
+		if (val == "0"){
+			id("StartTime").disable(true);
+			id("EndTime").disable(true);
+			$("#StartTime").attr("data-value", 0).children("span.select-value").text("00:00");
+			$("#EndTime").attr("data-value", 24).children("span.select-value").text("24:00");
+			$("#AllTime").removeClass("icon_select_off");
+			$("#AllTime").addClass("icon_select_on");
+			$("#AllTime").css({color:"#2AAE1A"});
+			$("#AllTime").attr("value","1");
+		}else if(val == "1"){
+			id("StartTime").disable(false);
+			id("EndTime").disable(false);
+			$("#AllTime").removeClass("icon_select_on");
+			$("#AllTime").addClass("icon_select_off");
+			$("#AllTime").css({color:"#000000"});
+			$("#AllTime").attr("value","0");
+		}else{
+			return false;
+		}
+		return true;
+	}
+
+	function initPage(rule){
+		if(rule != null){
+			initDay(rule);
+		}
+		initTime(rule);
+	}
+
+	$("#AllTime").click(function(){
+		var value = $(this).attr("value");
+		allTimeClick(value);
+	});
+
+	$("#DaySel").find("i[name='day']").click(function(){
+		iconDayClick(this)
+	});
+
+	$("#AllDay").click(function(){
+		closeNote();
+		var iday = $("#DaySel").find("i[name='day']");
+		iday.push(this);
+		var value = $(this).attr("value");
+		for (var i = 0; i < iday.length; i++){
+			if (value == "0"){
+				$(iday[i]).removeClass("icon_select_off");
+				$(iday[i]).addClass("icon_select_on");
+				$(iday[i]).css({color:"#2AAE1A"});
+				$(iday[i]).attr("value","1");
+			}else{
+				$(iday[i]).removeClass("icon_select_on");
+				$(iday[i]).addClass("icon_select_off");
+				$(iday[i]).css({color:"#000000"});
+				$(iday[i]).attr("value","0");
+			}
+		}
+	});
+
+	function checkDay(){
+		var tempday = $("#DaySel").find("i[name='day']");
+		var num = 0;
+		var day = "";
+
+		for (var i = 0; i < tempday.length; i++){
+			num += Number($(tempday[i]).attr("value"));
+			day = day + $(tempday[i]).attr("value");
+		}
+
+		if (num < 1){
+			return false;
+		}
+
+		return day;
+	}
+
+	$("#Del").click(function(){
+		var data = {};
+		var para = {};
+		var rule_list = [];
+		var parent_list = {};
+		parent_list.rule_list = rule_list;
+		para.parent_ctrl = {};
+		para.parent_ctrl.parent_list = parent_list;
+		rule_list.push(data);
+
+		data.id = client.id;
+		showLoading(label.saving);
+		apiDel(para, function(){
+			$.setTimeout(function(){
+			closeLoading();
+				stateman.go("parentCtrl", {param:{"keyBack":1}});
+			}, 2000);
+		});
+	});
+
+	$("#Save").click(function(){
+		if(client.action == "edit"){
+			saveParentCtrl("set", client.id);
+		}else{
+			if (parentList.length == 10){
+				showNote(errStr.maxRuleNumberTen);
+				return false;
+			}
+			saveParentCtrl("add", "");
+		}
+	});
+
+	function saveParentCtrl(action, index){
+		var data = {};
+		var para = {};
+		var start_hour = $("#StartTime").attr("data-value");
+		var end_hour = $("#EndTime").attr("data-value");
+		var day = checkDay();
+		var parent_list = {};
+		var rule_list = [];
+		parent_list.rule_list = rule_list;
+
+		para.parent_ctrl = {};
+		data.id = index;
+		data.name = client.name;
+		data.mac = client.mac;
+		data.cycle = day;
+		data.start_time = setTimeData(start_hour, 0);
+		data.end_time = setTimeData(end_hour, 0);
+		para.parent_ctrl.parent_list = parent_list;
+		rule_list.push(data);
+		if (!day){
+			handleError(E_PARENTCTRL_CYCLE_BLANK);
+			return;
+		}
+
+		if (handleError(checkTimeRange(start_hour, 0, end_hour, 0))){
+			return;
+		}
+
+		if (handleError(checkTime(data.start_time, data.end_time))){
+			return;
+		}
+
+		showLoading(label.saving);
+		if(action == 'set'){
+			apiSet(para, function(ret){
+				var code = ret[ERR_CODE];
+				if (E_NONE == code){
+					$.setTimeout(function(){
+						closeLoading();
+						stateman.go("parentCtrl", {param:{"keyBack":1}});
+					}, 2000);
+				}else{
+					handleError(code);
+					closeLoading();
+				}
+			});
+		}else if(action == 'add'){
+			apiAdd(para, function(ret){
+				var code = ret[ERR_CODE];
+				if (E_NONE == code){
+					$.setTimeout(function(){
+						closeLoading();
+						stateman.go("parentCtrl", {param:{"keyBack":1}});
+					}, 2000);
+				}else{
+					handleError(code);
+					closeLoading();
+				}
+			});
+		}
+	}
+
+	function checkTimeRange(startHour, startMin, endHour, endMin){
+		if(!checkNumRange(startHour, 23, 0)){
+			return E_PARENTCTRL_START_TIME_HOUR;
+		}
+
+		if(!checkNumRange(startMin, 59, 0)){
+			return E_PARENTCTRL_START_TIME_MIN;
+		}
+
+		if(!checkNumRange(endHour, 24, 0)){
+			return E_PARENTCTRL_END_TIME_HOUR;
+		}
+
+		if(!checkNumRange(endMin, 59, 0)){
+			return E_PARENTCTRL_END_TIME_MIN;
+		}
+
+		return E_NONE;
+	}
+
+	function checkTime(start, end) {
+		if(start >= end){
+			return E_PARENTCTRL_START_END_LESS;
+		}
+
+		return E_NONE;
+	}
+})();
+</script>
+
+<div class="head-con">
+	<a href="#/devList/?keyBack=1" class="head-btn-l"><i class="head-btn icon icon_back"></i></a>
+	<h1 class="head-title">{%label.selectAllowNetworkTime%}</h1>
+</div>
+<div class="device-list below-head">
+	<ul class="blank-bg"></ul>
+	<ul class="set-con-title">
+		<label class="title-desc-lbl">{%label.dateSet%}</label>
+	</ul>
+	<div class="row-div">
+		<div class="select-day select-width">
+			<span>{%label.everyDay%}</span>
+			<i id="AllDay" class="icon icon_select_off" value="0"></i>
+		</div>
+	</div>
+	<div class="split-line"></div>
+	<div id="DaySel">
+		<div class="row-div">
+			<div  class="select-day">
+				<span>{%label.Monday%}</span>
+				<i name="day" class="icon icon_select_off" value="0"></i>
+			</div>
+			<div class="select-day">
+				<span>{%label.Tuesday%}</span>
+				<i name="day" class="icon icon_select_off" value="0"></i>
+			</div>
+			<div class="select-day">
+				<span>{%label.Wednesday%}</span>
+				<i name="day" class="icon icon_select_off" value="0"></i>
+			</div>
+			<div class="select-day">
+				<span>{%label.Thursday%}</span>
+				<i name="day" class="icon icon_select_off" value="0"></i>
+			</div>
+		</div>
+		<div class="row-div">
+			<div class="select-day">
+				<span>{%label.Friday%}</span>
+				<i name="day" class="icon icon_select_off" value="0"></i>
+			</div>
+			<div class="select-day">
+				<span>{%label.Saturday%}</span>
+				<i name="day" class="icon icon_select_off" value="0"></i>
+			</div>
+			<div class="select-day">
+				<span>{%label.Sunday%}</span>
+				<i name="day" class="icon icon_select_off" value="0"></i>
+			</div>
+		</div>
+	</div>
+	<ul class="blank-bg"></ul>
+	<ul class="set-con-title">
+		<label class="title-desc-lbl">{%label.timeSet%}</label>
+	</ul>
+	<div class="row-div">
+		<div class="select-day select-width">
+			<span>{%label.allDay%}</span>
+			<i id="AllTime" class="icon icon_select_off" value="0"></i>
+		</div>
+	</div>
+	<div class="split-line"></div>
+	<ul class="set-con">
+		<label class="desc-lbl">{%label.startTime%}:</label>
+		<li class="text-con">
+			<span id="StartTime" class="select" data-value="0">
+				<span class="select-value">00:00</span>
+				<i class="tip icon_list-expansion"></i>
+			</span>
+		</li>
+	</ul>
+	<ul class="set-con">
+		<label class="desc-lbl">{%label.endTime%}:</label>
+		<li class="text-con">
+			<span id="EndTime" class="select" data-value="0">
+				<span class="select-value">00:00</span>
+				<i class="tip icon_list-expansion"></i>
+			</span>
+		</li>
+	</ul>
+	<div class="err-note hidden">
+		<i class="err-icon icon_remind_line"></i>
+		<p class="note-str"></p>
+	</div>
+	<div class="btn-con">
+		<input id="Save" class="btn" type="button" value="{%btn.save%}" />
+		<input id="Del" class="btn btn-left" type="button" value="{%btn.del%}" />
+	</div>
+</div>

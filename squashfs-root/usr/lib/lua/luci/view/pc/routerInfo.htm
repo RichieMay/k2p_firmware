@@ -1,0 +1,676 @@
+<style type="text/css">div.status-con{margin:0 50px}ul.status-con{padding-left:200px;position:relative}ul.bottom-line{border-bottom:1px solid #e8e8e8}li.middle-con{display:inline-block;width:50%;vertical-align:top}h2.status-title{position:absolute;left:90px;top:8px;text-align:left;font-size:15px;color:#9c9c9c}h3.sub-title{font-size:14px;color:#4f5356;height:40px;line-height:40px;vertical-align:middle}i.sub-title-icon{display:inline-block;color:#ffa14d;font-size:28px;vertical-align:middle;width:40px;text-align:center}p.status-desc{font-size:14px;color:#4f5356;height:40px;line-height:40px;padding-left:40px;vertical-align:middle;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.list-bg-first{background-color:#f8f8f8}.list-bg-second{background-color:#fff}.ok-info{display:none}li.time-desc{width:100%}span.time-tip{color:#f00}input.btn{cursor:pointer;width:100px;height:26px;line-height:26px;vertical-align:middle;margin-top:0;margin-bottom:0;margin-left:40px}</style><script type="text/javascript">
+(function(){
+	<%
+		local usb_cap = "0"
+		local wisp_cap = "0"
+		local ipv6_cap = "0"
+		local mode_cap = "1"
+		local dev_para = {
+			dev_feature = {app_pc = {}, route_info = {}, mode_switch = {}}
+		}
+		local dev_result = tpl_get_data(dev_para)
+		local network_connect_cap = dev_result[K_MODULE].dev_feature.route_info.network_connect
+		local mode_switch_cap = dev_result[K_MODULE].dev_feature.mode_switch.support
+		for _, v in pairs(dev_result[K_MODULE].dev_feature.app_pc.installed) do
+			if v == "usb" then
+				usb_cap = "1"
+			end
+			if v == "wisp" then
+				wisp_cap = "1"
+			end
+			if v == "ipv6" then
+				ipv6_cap = "1"
+			end
+		end
+
+		local para = {
+			device = {info = {}},
+			wireless = {wifi_2g_status = {}, wifi_5g_status = {}},
+			shared_wifi = {config = {}}
+		}
+
+		if "1" == mode_switch_cap then
+			local mode_switch = {}
+			mode_switch["config"] = {}
+			para["mode_switch"] = mode_switch
+			local mode_result = tpl_get_data(para)
+			local mode_result_cap = mode_result[K_MODULE].mode_switch.config.mode
+			if "ap" == mode_result_cap then
+				mode_cap = "0"
+			end
+		end
+
+		if "1" == mode_cap then
+			local network = {}
+			network["wan_status"] = {}
+			network["lan"] = {}
+			para["network"] = network
+		end
+
+		if "1" == usb_cap then
+			local usb = {}
+			usb["device"] = {}
+			para["usb"] = usb
+		end
+
+		if "1" == wisp_cap then
+			local wisp = {}
+			wisp["config"] = {}
+			para["wisp"] = wisp
+		end
+
+		if "1" == ipv6_cap then
+			local ipv6 = {}
+			ipv6["wan6_status"] = {}
+			ipv6["lan6_status"] = {}
+			para["ipv6"] = ipv6
+		end
+
+		local data = tpl_get_data(para, true)
+		mdate = luci.util.exec("date +'%Y/%m/%d %H:%M'") 
+		mver=luci.util.exec("uci get version.num.ver") or ""
+
+	-%>
+	var sysStatus = <%=data%>;
+	var currentState = stateman.current.name;
+	var usb_cap = "<%=usb_cap%>";
+	var wisp_cap = "<%=wisp_cap%>";
+	var ipv6_cap = "<%=ipv6_cap%>";
+	var networkConnectCap = "<%=network_connect_cap%>";
+	var modeSwitchCap = "<%=mode_switch_cap%>";
+	var connectStatus;
+	statusHd = null;
+
+	$("#WanLanStatus").show();
+	$("#HideStatus").hide();
+	var wanStatusCap = "1";
+	if ("1" == modeSwitchCap){
+		var modeSwitch = sysStatus[K_MODULE].mode_switch.config;
+		if ("ap" == modeSwitch.mode){
+			$("#WanLanStatus").hide();
+			$("#HideStatus").show();
+			wanStatusCap = "0";
+		}
+	}
+
+	function capacityTrans(capacity){
+		var KB = 1000;
+		var MB = KB * 1000;
+		var GB = MB * 1000;
+
+		capacity = parseInt(capacity, 10);
+		if (capacity >= GB){
+			capacity = (capacity/GB).toFixed(2) + "GB";
+		}else if (capacity >= MB){
+			capacity = (capacity/MB).toFixed(2) + "MB";
+		}else if (capacity >= KB){
+			capacity = (capacity/KB).toFixed(2) + "KB";
+		}else{
+			capacity = capacity.toFixed(2) + "B";
+		}
+
+		return capacity.toString();
+	};
+
+	function refreshStatus(){
+		var data = {
+			device:{"info":null},
+			wireless:{"wifi_2g_status":null, "wifi_5g_status":null},
+			shared_wifi:{"config":null}
+		};
+
+		if ("1" == wanStatusCap) {
+			var network = {
+				"wan_status":null, "lan":null
+			}
+			data.network = network;
+		}
+		if ("1" == usb_cap) {
+			var usb = {
+				"device":null
+			}
+			data.usb = usb;
+		}
+		if ("1" == wisp_cap) {
+			var wisp = {
+				"config":null
+			}
+			data.wisp = wisp;
+		}
+		if ("1" == ipv6_cap) {
+			var ipv6 = {
+				"wan6_status":null,
+				"lan6_status":null
+			}
+			data.ipv6 = ipv6;
+		}
+		apiGet(data, function(result){
+			if (currentState != stateman.current.name){
+				return ;
+			}
+			initPage(result);
+
+			statusHd = $.setTimeout(refreshStatus, 2000);
+		});
+	}
+
+	function initPage(result){
+		var errNo = result[ERR_CODE];
+		if (E_NONE == errNo){
+			ret = result[K_MODULE];
+		}else{
+			console.log(result);
+			return;
+		}
+
+		// 系统信息
+		var sys = ret.device.info;
+		$("#Uptime").text(timeTrans(sys.uptime));
+		$("#Product").text(sys.model);
+		$("#Sw").text(sys.sw_ver);
+		$("#Hw").text(sys.hw_ver);
+
+		if (sys.current_time == ""){
+			$("#CurTime").addClass("time-tip");
+			$("#CurTime").text(label.noUpdateTime);
+		}else{
+			$("#CurTime").removeClass("time-tip");
+			$("#CurTime").text(sys.current_time);
+		}
+
+		if ("1" == wanStatusCap) {
+			// 网络状态-WAN
+			var wan = ret.network.wan_status;
+			var sharedInfo = ret.shared_wifi.config;
+			var proto = "";
+			if ("1" == wisp_cap) {
+				var wispStatus = ret.wisp.config;
+				if ("1" == wispStatus.enable){
+					proto = label.wispStatus + "-";
+				}
+			}
+
+			switch(wan.protocol){
+			case "dhcp":
+				proto += label.wanDHCP;
+				break;
+			case "pppoe":
+				proto += label.wanPPPoE;
+				break;
+			case "static":
+				proto += label.wanStatic;
+				break;
+			case "l2tp":
+				proto += label.wanL2tp;
+				break;
+			case "pptp":
+				proto += label.wanPptp;
+				break;
+			default:
+				proto += wan.protocol;
+				break;
+			}
+
+			$("#WanProto").text(proto);
+			$("#WanIp").text(wan.ip);
+			$("#WanNetmask").text(wan.netmask);
+			$("#WanGateway").text(wan.gateway);
+			$("#WanMac").text(wan.mac);
+
+			if ("" == wan.dns_sec || "0.0.0.0" == wan.dns_sec){
+				$("#WanDns").text(wan.dns_pri);
+			}else{
+				$("#WanDns").text(wan.dns_pri + "," + wan.dns_sec);
+			}
+
+			if ("1" == networkConnectCap && 0 == sharedInfo.enable){	//开启共享WiFi，白名单不可用
+				if ("dhcp" == wan.protocol && wan.ip != "" && wan.ip != "0.0.0.0"){
+					$("#connectBtn").val(btn.freed);
+					$("#connectBtn").show();
+					$("#dhcpHelp").show();
+					connectStatus = 0;
+				}else if("dhcp" == wan.protocol && (wan.ip == "" || wan.ip == "0.0.0.0")){
+					$("#connectBtn").val(btn.obtain);
+					$("#connectBtn").show();
+					$("#dhcpHelp").show();
+					connectStatus = 1;
+				}else if("pppoe" == wan.protocol && wan.ip != "" && wan.ip != "0.0.0.0"){
+					$("#connectBtn").val(btn.disconnect);
+					$("#connectBtn").show();
+					$("#pppoeHelp").show();
+					connectStatus = 0;
+				}else if("pppoe" == wan.protocol && (wan.ip == "" || wan.ip == "0.0.0.0")){
+					$("#connectBtn").val(btn.connect);
+					$("#connectBtn").show();
+					$("#pppoeHelp").show();
+					connectStatus = 1;
+				}else{
+					$("#connectBtn").hide();
+				}
+			}
+
+			// 网络状态-LAN
+			var lan = ret.network.lan;
+			$("#LanIp").text(lan.ip);
+			$("#LanNetmask").text(lan.netmask);
+			$("#LanMac").text(lan.mac);
+		}
+
+		if (ipv6_cap == "1"){
+			//ipv6状态-WAN
+			var wan6 = ret.ipv6.wan6_status;
+			$("#ConnectionType").text(wan6.protocol);
+			$("#Ipv6Addr").text(wan6.ip6addr);
+			$("#Ipv6Gateway").text(wan6.ip6gw);
+			$("#WanPridns").text(wan6.dns_pri);
+			$("#WanSecdns").text(wan6.dns_sec);
+
+			//ipv6状态-LAN
+			var lan6 = ret.ipv6.lan6_status;
+			if (lan6.ip6mode == 1){
+				$("#Ipv6Assign").text("DHCPv6 Server");
+			}else if (lan6.ip6mode == 2){
+				$("#Ipv6Assign").text("SLAAC");
+			}else {
+				$("#Ipv6Assign").text("")
+			}
+			$("#Ipv6Lanaddr").text(lan6.ip6addr);
+			$("#LinkLocal").text(lan6.lla);
+			$("#Ipv6Status").show();
+		}else{
+			$("#Ipv6Status").hide();
+		}
+
+		// 无线状态-2.4G
+		var wifi = ret.wireless.wifi_2g_status;
+
+		if (1 == wifi.enable){
+			$("#WlanSwitch").text(label.wifiOpened);
+		}else{
+			$("#WlanSwitch").text(label.wifiClosed);
+		}
+
+		$("#WlanSsid").text(wifi.ssid);
+
+		var encryptMode;
+		switch(wifi.safe_mode){
+		case "0":
+			encryptMode = label.uncrypt;
+			break;
+		case "1":
+			encryptMode = "WPA-PSK/WPA2-PSK";
+			break;
+		default:
+			encryptMode = wifi.safe_mode;
+		}
+		$("#EncryptType").text(encryptMode);
+
+		var wifiMode;
+		switch(parseInt(wifi.mode)){
+		case 0:
+			wifiMode = label.wifiBmode;
+			break;
+		case 1:
+			wifiMode = label.wifiGmode;
+			break;
+		case 2:
+			wifiMode = label.wifiNmode;
+			break;
+		default:
+			wifiMode = wifi.mode;
+		}
+		$("#WifiMode").text(wifiMode);
+
+		$("#Channel").text(wifi.channel);
+		$("#wifiMac").text(wifi.mac);
+
+		// 无线状态-5G
+		var wifi5g = ret.wireless.wifi_5g_status;
+		if (1 == wifi5g.enable){
+			$("#Wlan5Switch").text(label.wifiOpened);
+		}else{
+			$("#Wlan5Switch").text(label.wifiClosed);
+		}
+
+		$("#Wlan5Ssid").text(wifi5g.ssid);
+
+		var encryptMode;
+		switch(wifi5g.safe_mode){
+		case "0":
+			encryptMode = label.uncrypt;
+			break;
+		case "1":
+			encryptMode = "WPA-PSK/WPA2-PSK";
+			break;
+		default:
+			encryptMode = wifi5g.safe_mode;
+		}
+		$("#EncryptType5G").text(encryptMode);
+
+		var wifiMode;
+		switch(parseInt(wifi5g.mode)){
+		case 0:
+			wifiMode = label.wifiAmode;
+			break;
+		case 1:
+			wifiMode = label.wifiCmode;
+			break;
+		default:
+			wifiMode = wifi5g.mode;
+		}
+		$("#WifiMode5G").text(wifiMode);
+
+		$("#Channel5G").text(wifi5g.channel);
+		$("#wifi5Mac").text(wifi5g.mac);
+
+		// USB存储状态
+		if ("1" == usb_cap) {
+			var usb = ret.usb.device;
+			if (1 == usb.connecte){
+				$("#UsbDev").text(label.connected);
+
+				var devList = usb.device_list;
+				$("#UsbDevName").text(devList[0].name);
+				$("#FreeCapacity").text(capacityTrans(devList[0].free_capacity));
+				$("#AllCapacity").text(capacityTrans(devList[0].total_capacity));
+				$(".ok-info").show();
+				$(".bad-info").hide();
+			}else{
+				$("#UsbDev").text(label.unconnected);
+				$(".ok-info").hide();
+				$(".bad-info").show();
+			}
+		} else {
+			$("#CanUsb").hide();
+		}
+
+	}
+
+	initPage(sysStatus);
+	$.setTimeout(refreshStatus, 2000);
+
+	$("#rebootbutton").click(function(){
+			showConfirm(label.routerReboot, function(choose){
+				if (choose){
+					$.sendAjax('/system/reboot', null, function(){
+						showProgressBar(label.rebootEquipment, label.rebooting, ROUTER.time.reboot, function(){
+							window.location.reload();
+						});
+
+						$.setTimeout(function(){
+							// 检测LAN是否可以连接DUT
+							lanDetecting(function(){
+								window.location.reload();
+							});
+						}, ROUTER.time.detectDelay);
+					});
+				}
+			});	
+		});
+
+
+	$("#connectBtn").click(function(){
+		clearTimeout(statusHd);
+		var data = {};
+		var para = {};
+		para.network = {};
+		para.network.wan_connection = data;
+		data.action = connectStatus;
+		showLoading(label.saving);
+		apiSet(para, function(ret){
+			var code = ret[ERR_CODE];
+			if (E_NONE == code){
+				$.setTimeout(function(){
+					closeLoading();
+					refreshStatus();
+				}, ret[K_MODULE].network.wan_connection.wait_time * 1000);
+			}else{
+				closeLoading();
+				refreshStatus();
+				handleError(code);
+			}
+		});
+	});
+})();
+</script>
+
+<div class="help hidden">
+	<ul class="help-content">
+		<li class="help-head">
+			<img class="app-icon" src="/luci-static/images/app-icon/router_status.png?_=20180420151033" />
+			<span class="help-title">{%label.routerInfo%}</span>
+		</li>
+		<li class="summary">{%helpStr.systemInfoTip%}</li>
+		<li class="summary">{%helpStr.currentTimeTip%}</li>
+		<li class="summary hidden" id="dhcpHelp">{%helpStr.systemInfoDhcp%}</li>
+		<li class="summary hidden" id="pppoeHelp">{%helpStr.systemInfoPppoe%}</li>
+	</ul>
+</div>
+<div class="head-con">
+	<img class="app-icon" src="/luci-static/images/app-icon/router_status.png?_=20180420151033" />
+	<a href="javascript:history.go(-1);" class="head-btn-l">
+		<i class="head-btn icon icon_back"></i>
+		<span class="head-title">{%label.routerInfo%}</span>
+	</a>
+</div>
+<div class="status-con below-head">
+	<ul class="status-con bottom-line">
+		<h2 class="status-title">{%label.systemInfo%}</h2>
+		<li class="middle-con">
+			<p class="status-desc list-bg-first">
+				<label class="item-name">系统时间：</label>
+				<span class="item-status" id="Systime"><%=mdate%></span>
+			</p>
+
+			<p class="status-desc list-bg-second">
+				<label class="item-name">{%label.runningTime%}{%label.colon%}</label>
+				<span class="item-status" id="Uptime"></span>
+			</p>
+			<p class="status-desc list-bg-first">
+				<label class="item-name">{%label.deviceModel%}{%label.colon%}</label>
+				<span class="item-status" id="Product"></span>
+<span><input type="button" class="btn" id="rebootbutton" style="width:56px;margin-top: 1px;margin-bottom: 5px;padding: 0;height: 26px;line-height: 26px;" value="重启"></span>
+			</p>
+		</li>
+		<li class="middle-con right-con">
+			<p class="status-desc list-bg-first">
+				<label class="item-name">定制版本：</label>
+				<span class="item-status" id="MySw"><%=mver%></span>
+			</p>
+
+			<p class="status-desc list-bg-second">
+				<label class="item-name">{%label.swVersion%}{%label.colon%}</label>
+				<span class="item-status" id="Sw"></span>
+			</p>
+			<p class="status-desc list-bg-first">
+				<label class="item-name">{%label.hwVersion%}{%label.colon%}</label>
+				<span class="item-status" id="Hw"></span>
+			</p>
+		</li>
+
+	</ul>
+	<ul class="status-con" id="HideStatus">
+		<h2 class="status-title"></h2>
+		<li class="middle-con">
+			<h3 class="sub-title list-bg-second"></h2>
+		</li>
+		<li class="middle-con right-con">
+			<h3 class="sub-title list-bg-second"></h2>
+		</li>
+	</ul>
+	<ul class="status-con bottom-line" id="WanLanStatus">
+		<h2 class="status-title">{%label.ifaceStatus%}</h2>
+		<li class="middle-con">
+			<h3 class="sub-title list-bg-second"><i class="sub-title-icon icon_lan"></i>{%label.wanStatus%}
+				<input id="connectBtn" class="btn hidden" type="button" value="{%btn.connect%}" />
+			</h2>
+			<p class="status-desc  list-bg-first">
+				<label class="item-name">{%label.wanType%}{%label.colon%}</label>
+				<span class="item-status" id="WanProto"></span>
+			</p>
+			<p class="status-desc list-bg-second">
+				<label class="item-name">{%label.wanIpAddr%}{%label.colon%}</label>
+				<span class="item-status" id="WanIp"></span>
+			</p>
+			<p class="status-desc list-bg-first">
+				<label class="item-name">{%label.wanNetmask%}{%label.colon%}</label>
+				<span class="item-status" id="WanNetmask"></span>
+			</p>
+			<p class="status-desc list-bg-second">
+				<label class="item-name">{%label.wanGateway%}{%label.colon%}</label>
+				<span class="item-status" id="WanGateway"></span>
+			</p>
+			<p class="status-desc list-bg-first">
+				<label class="item-name">{%label.wanDns%}{%label.colon%}</label>
+				<span class="item-status" id="WanDns"></span>
+			</p>
+			<p class="status-desc list-bg-second">
+				<label class="item-name">{%label.wanMac%}{%label.colon%}</label>
+				<span class="item-status" id="WanMac"></span>
+			</p>
+		</li>
+		<li class="middle-con right-con">
+			<h3 class="sub-title list-bg-second"><i class="sub-title-icon icon_lan"></i>{%label.lanStatus%}</h2>
+			<p class="status-desc list-bg-first">
+				<label class="item-name">{%label.lanIpAddr%}{%label.colon%}</label>
+				<span class="item-status" id="LanIp"></span>
+			</p>
+			<p class="status-desc list-bg-second">
+				<label class="item-name">{%label.lanNetmask%}{%label.colon%}</label>
+				<span class="item-status" id="LanNetmask"></span>
+			</p>
+			<p class="status-desc list-bg-first">
+				<label class="item-name">{%label.lanMac%}{%label.colon%}</label>
+				<span class="item-status" id="LanMac"></span>
+			</p>
+			<p class="status-desc list-bg-second"></p>
+			<p class="status-desc list-bg-first"></p>
+			<p class="status-desc list-bg-second"></p>
+		</li>
+	</ul>
+	<ul class="status-con bottom-line">
+		<h2 class="status-title">{%label.wifiStatus%}</h2>
+		<li class="middle-con">
+			<h3 class="sub-title list-bg-first"><i class="sub-title-icon icon_wifi_signal_thr"></i>{%label.wifi2GStatus%}</h2>
+			<p class="status-desc list-bg-second">
+				<label class="item-name">{%label.wifiStatus%}{%label.colon%}</label>
+				<span class="item-status" id="WlanSwitch"></span>
+			</p>
+			<p class="status-desc list-bg-first">
+				<label class="item-name">{%label.wifiSsid%}{%label.colon%}</label>
+				<span class="item-status" id="WlanSsid"></span>
+			</p>
+			<p class="status-desc list-bg-second">
+				<label class="item-name">{%label.encryptType%}{%label.colon%}</label>
+				<span class="item-status" id="EncryptType"></span>
+			</p>
+			<p class="status-desc list-bg-first">
+				<label class="item-name">{%label.wifiMode%}{%label.colon%}</label>
+				<span class="item-status" id="WifiMode"></span>
+			</p>
+			<p class="status-desc list-bg-second">
+				<label class="item-name">{%label.wifiChannel%}{%label.colon%}</label>
+				<span class="item-status" id="Channel"></span>
+			</p>
+			<p class="status-desc list-bg-first">
+				<label class="item-name">{%label.wifiMac%}{%label.colon%}</label>
+				<span class="item-status" id="wifiMac"></span>
+			</p>
+		</li>
+		<li class="middle-con right-con">
+			<h3 class="sub-title list-bg-first"><i class="sub-title-icon icon_wifi_signal_thr"></i>{%label.wifi5GStatus%}</h2>
+			<p class="status-desc list-bg-second">
+				<label class="item-name">{%label.wifiStatus%}{%label.colon%}</label>
+				<span class="item-status" id="Wlan5Switch"></span>
+			</p>
+			<p class="status-desc list-bg-first">
+				<label class="item-name">{%label.wifiSsid%}{%label.colon%}</label>
+				<span class="item-status" id="Wlan5Ssid"></span>
+			</p>
+			<p class="status-desc list-bg-second">
+				<label class="item-name">{%label.encryptType%}{%label.colon%}</label>
+				<span class="item-status" id="EncryptType5G"></span>
+			</p>
+			<p class="status-desc list-bg-first">
+				<label class="item-name">{%label.wifiMode%}{%label.colon%}</label>
+				<span class="item-status" id="WifiMode5G"></span>
+			</p>
+			<p class="status-desc list-bg-second">
+				<label class="item-name">{%label.wifiChannel%}{%label.colon%}</label>
+				<span class="item-status" id="Channel5G"></span>
+			</p>
+			<p class="status-desc list-bg-first">
+				<label class="item-name">{%label.wifiMac%}{%label.colon%}</label>
+				<span class="item-status" id="wifi5Mac"></span>
+			</p>
+		</li>
+	</ul>
+	<ul id="Ipv6Status" class="status-con bottom-line hidden">
+		<h2 class="status-title">{%label.ipv6Status%}</h2>
+		<li class="middle-con">
+			<h3 class="sub-title list-bg-second"><i class="sub-title-icon icon_lan"></i>{%label.ipv6Wan%}</h2>
+			<p class="status-desc list-bg-first">
+				<label class="item-name">{%label.ipv6Connection%}{%label.colon%}</label>
+				<span class="item-status" id="ConnectionType"></span>
+			</p>
+			<p class="status-desc list-bg-second">
+				<label class="item-name">{%label.ipv6Addr%}{%label.colon%}</label>
+				<span class="item-status" id="Ipv6Addr"></span>
+			</p>
+			<p class="status-desc list-bg-first">
+				<label class="item-name">{%label.ipv6Gateway%}{%label.colon%}</label>
+				<span class="item-status" id="Ipv6Gateway"></span>
+			</p>
+			<p class="status-desc list-bg-second">
+				<label class="item-name">{%label.ipv6Pridns%}{%label.colon%}</label>
+				<span class="item-status" id="WanPridns"></span>
+			</p>
+			<p class="status-desc list-bg-first">
+				<label class="item-name">{%label.ipv6Secdns%}{%label.colon%}</label>
+				<span class="item-status" id="WanSecdns"></span>
+			</p>
+		</li>
+		<li class="middle-con right-con">
+			<h3 class="sub-title list-bg-second"><i class="sub-title-icon icon_lan"></i>{%label.ipv6Lan%}</h2>
+			<p class="status-desc list-bg-first">
+				<label class="item-name">{%label.ipv6Assign%}{%label.colon%}</label>
+				<span class="item-status" id="Ipv6Assign"></span>
+			</p>
+			<p class="status-desc list-bg-second">
+				<label class="item-name">{%label.ipv6Addr%}{%label.colon%}</label>
+				<span class="item-status" id="Ipv6Lanaddr"></span>
+			</p>
+			<p class="status-desc list-bg-first">
+				<label class="item-name">{%label.ipv6Linkaddr%}{%label.colon%}</label>
+				<span class="item-status" id="LinkLocal"></span>
+			</p>
+			<p class="status-desc list-bg-second"></p>
+			<p class="status-desc list-bg-first"></p>
+			<p class="status-desc list-bg-second"></p>
+		</li>
+	</ul>
+	<ul class="status-con" id="CanUsb">
+		<h2 class="status-title">{%label.usbStatus%}</h2>
+		<li class="middle-con" id="">
+			<p class="status-desc list-bg-second">
+				<label class="item-name">{%label.usbDev%}{%label.colon%}</label>
+				<span class="item-status" id="UsbDev"></span>
+			</p>
+			<p class="status-desc list-bg-first ok-info">
+				<label class="item-name">{%label.usbDevName%}{%label.colon%}</label>
+				<span class="item-status" id="UsbDevName"></span>
+			</p>
+		</li>
+		<li class="middle-con right-con">
+			<p class="status-desc list-bg-second bad-info"></p>
+			<p class="status-desc list-bg-second ok-info">
+				<label class="item-name">{%label.freeCapacity%}{%label.colon%}</label>
+				<span class="item-status" id="FreeCapacity"></span>
+			</p>
+			<p class="status-desc list-bg-first ok-info">
+				<label class="item-name">{%label.allCapacity%}{%label.colon%}</label>
+				<span class="item-status" id="AllCapacity"></span>
+			</p>
+		</li>
+	</ul>
+</div>

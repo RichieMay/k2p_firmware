@@ -1,0 +1,266 @@
+<style type="text/css">ul.set-con-switch{margin-bottom:0}span.to{display:inline-block;vertical-align:middle;line-height:28px;font-size:14px;color:#4f5356;padding-left:5px;padding-right:5px}div.tab-con{font-size:14px;color:#4f5356;text-align:center;margin:40px 220px 10px}table.set-con{width:100%;border-collapse:collapse;table-layout:auto}.set-con-long{width:17%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.set-con-short{width:15%}input.text-con{color:#4f5356;height:34px;line-height:34px;width:85%;padding:0 .5em;font-size:14px;border:1px solid #DDD;border-radius:4px;text-align:center}li.text-tip{height:34px;line-height:34px;margin:0 0 4px;width:90%}li.text-con span.select-con{width:100%;padding:0;height:34px;line-height:31px}span.select span.sel-con{width:100%;line-height:31px;height:34px;text-align:center}li.text-tip ul.sel-opts-ul{width:100%}.boder-tr{border-bottom:1px solid #e7e7e7;height:40px;line-height:40px;background-color:#f4f4f4}ul.add-orange{color:#ff8000;margin-top:4px;font-size:32px;float:right;margin-right:30px;cursor:pointer}ul.add-gray{color:#bfbfbf;cursor:default}span.color-gray{color:#bfbfbf}span.handle-tip{display:inline-block;width:50%;height:30px;cursor:pointer}.table-height{height:40px;line-height:40px;border-bottom:1px solid #e7e7e7}p.note-str{text-align:left}</style>
+<script type="text/javascript">
+//(function(){
+	<%
+		local para = {
+			freesocks = {config = {}, freesocks_list = {}}
+		}
+		
+		local result = tpl_get_data(para, true)
+		local process_count = tonumber(luci.sys.exec("ps -w | grep freesocks |grep -v grep| wc -l"))
+		if process_count > 0 then
+			Run_str = "运行中"
+		else
+			Run_str = "未运行"
+		end
+	-%>
+	var freesocksInfo = <%=result%>;
+	var serverIndex = freesocksInfo[K_MODULE].freesocks.config.server_index;
+	freesocksInfo[K_MODULE].freesocks.config.server_index = String(Number(serverIndex) + 1);
+	
+	var globalCfg;
+	function init(result){
+		var errNo = result[ERR_CODE];
+		var ret;
+
+		if (E_NONE == errNo){
+			ret = result[K_MODULE];
+		}else{
+			console.log(result);
+			return;
+		}
+
+		globalCfg = ret.freesocks.config;		
+	}
+
+	init(freesocksInfo);
+
+	var lastsel = globalCfg.server_index;
+	var freesocksList = freesocksInfo[K_MODULE].freesocks.freesocks_list;
+
+	function gen_mainTable(){
+		var code = "";
+
+		code +='<table  id="FREESOCKSTab" class="set-con">';
+		code +='<tr class="boder-tr"><th class="set-con-long">别名</th><th class="set-con-long">服务器地址</th><th class="set-con-short">端口</th><th class="set-con-short table-con-handle">操作</th></tr>';
+		
+		if(freesocksList == "") {
+			code +='<tr><td style="color:#FFCC00;" colspan="6"><p style="margin:10px 0;">尚未添加服务器</p></td></tr>';
+		} else {
+			for(var i=0; i<freesocksList.length; i++){
+				code +='<tr class="table-height">' +
+					'<td class="set-con-long" title="' + freesocksList[i].name + '">' + freesocksList[i].name + '</td>' +
+					'<td class="set-con-long">' + freesocksList[i].ip + '</td>' +
+					'<td class="set-con-short">' + freesocksList[i].port + '</td>' +
+					'<td class="set-con-long">' +
+					'<span class="handle-tip color-orange edit-item" onclick="modifyRow(' + i +')"> 编辑</span>' +
+					'<span class="handle-tip color-orange del-item" onclick="deleteRow(' + i +')">删除 </span>' +
+					'</td>' +
+					'</tr>';
+			}
+		}
+
+		if(freesocksList.length < 30) {
+			code +='</table><ul class="add-orange"><i class="icon_add"  style="font-size:32px;"  onclick="addRow();"></i></ul>';
+		}
+		
+		else {
+			code +='</table>';
+		}
+		
+		document.getElementById("freesocksDiv").innerHTML = code;
+	}   
+
+	function gen_server_list(){
+		var serverlist= [{name:"停用", value:"0"}];
+
+		for(var idx = 0; idx < freesocksList.length; idx++) {
+			serverlist.push({
+				'name': freesocksList[idx].name,
+				'value': idx + 1
+			});
+		}
+		
+
+		document.getElementById("server_box").innerHTML ='<label class="desc-lbl">服务器</label><span id="SelectServer" class="select"><span class="value sel-value"></span><i class="tip icon_list-expansion"></i></span>';
+		initSelect("SelectServer",serverlist,lastsel);
+	}
+
+	function addRow(){
+		var initname="Server-" + freesocksList.length;
+
+		lastsel=document.getElementById("SelectServer").value;
+
+		freesocksList.push({
+			'name':initname,
+			'ip':"11.22.33.44",
+			'port':"8388",
+			'password':"helloworld"
+		});
+
+		modifyRow(freesocksList.length-1, true);
+		gen_server_list();
+	}
+
+	function deleteRow(index){
+		showConfirm('确定要删除所选服务器吗？', function(del) {
+			if(del) {
+				var itemp;
+
+				lastsel=document.getElementById("SelectServer").value;
+				itemp=parseInt(lastsel);
+				
+				if(parseInt(index+1)<=itemp) {
+					lastsel=String(itemp-1);
+				}
+				
+				freesocksList.splice(index,1);
+				gen_mainTable();
+				gen_server_list();
+			}
+		});		
+	}
+
+	function saveto_freesocks(index){
+		var ival=document.getElementById("Servername").value.replace(/(^\s*)|(\s*$)/g, "");
+
+		if(ival=="") {
+			showAlert("请输入服务器别名!");
+			return;
+		} else {
+			for(var idx = 0; idx < freesocksList.length; idx += 1) {
+				if(idx ==index)	continue;
+				if(freesocksList[idx].name==ival)	{
+					showAlert("服务器别名重复!");
+					return;
+				}
+			}
+		}
+
+		var err = checkNumNew(document.getElementById("Serverport").value, 1, 65535);
+		
+		if(E_NONE != err){
+			showAlert("端口有效值为1-65535");
+			return;
+		}
+
+		//err = checkIp(document.getElementById("Serverip").value);
+		//if(E_NONE != err){
+		//    err =checkDomain(document.getElementById("Serverip").value, 64);
+		//   if(E_NONE != err){
+		//    showAlert("服务器地址输入错误");
+		//    return;
+		// }
+		//}
+
+		freesocksList[index].name=document.getElementById("Servername").value;
+		freesocksList[index].ip=document.getElementById("Serverip").value;
+		freesocksList[index].port=document.getElementById("Serverport").value;
+		freesocksList[index].password=document.getElementById("Serverpasswd").value;
+
+		gen_mainTable();
+		gen_server_list();
+		
+		document.getElementById("main_box").style.display = "block";
+	}
+
+	function cancel_freesocks(add){
+		if(add) {
+			freesocksList.pop();
+		}
+
+		gen_mainTable();
+
+		document.getElementById("main_box").style.display = "block";
+	}
+
+	function SaveConfig(){
+		var para = {};
+
+		para.freesocks= {};
+		globalCfg.server_index = document.getElementById("SelectServer").value;
+		para.freesocks.config=globalCfg;
+		para.freesocks.config.server_index = Number(globalCfg.server_index) - 1;
+		para.freesocks.freesocks_list=freesocksList;
+
+		showLoading(label.saving);
+		apiSet(para, function(ret){
+			var code = ret[ERR_CODE];
+			
+			handleError(code, showNote) ? closeLoading() : closeLoading(2);
+			location.reload(); 
+		});
+	}
+
+	function modifyRow(index, newer){
+		lastsel=document.getElementById("SelectServer").value;
+
+		var code = "";
+		
+		code +='<div style="margin-bottom:10px;color: #003399;font-family: Verdana;" align="left">';
+		code +='<table width="100%" border="1" cellspacing="0" cellpadding="4" align="center" class="FormTable">';
+		code +='<ul class="set-con"><li class="text-con"><label class="desc-lbl">服务器别名</label><input id="Servername" class="text hover" maxLength="64" value="'+freesocksList[index].name +'" /></li></ul>';
+		code +='<ul class="set-con"><li class="text-con"><label class="desc-lbl">服务器地址</label><input id="Serverip" class="text hover" maxLength="64" value="'+freesocksList[index].ip+'" /></li></ul>';
+		code +='<ul class="set-con"><li class="text-con"><label class="desc-lbl">服务器端口</label><input id="Serverport" class="text hover" maxLength="64" value="'+freesocksList[index].port +'" /></li></ul>';
+		code +='<ul class="set-con"><li class="text-con"><label class="desc-lbl">服务器口令</label><input id="Serverpasswd" class="text hover" maxLength="64" value="'+freesocksList[index].password +'" /></li></ul>';
+		code +='</div>';
+
+		code +='</table></div>';
+		code +='<div class="btn-con"><input id="CancelRow" class="btn" style="width:80px;margin-right:20px;" type="button" onClick="cancel_freesocks(' + (newer ? true : false) + ')" value="取消" /><input id="SaveRow" style="width:80px;margin-left:40px;" class="btn" type="button" onClick="saveto_freesocks('+index+')" value="保存" /></div>';
+		
+		document.getElementById("freesocksDiv").innerHTML = code;
+		document.getElementById("main_box").style.display = "none";
+	}
+
+	gen_mainTable();
+	gen_server_list();
+</script>
+<div class="help hidden">
+	<ul class="help-content">
+		<li class="help-head">
+			<img class="app-icon" src="./luci-static/images/app-icon/freesocks.png" />
+			<span class="help-title">Freesocks</span>
+		</li>
+		<li class="summary">Freesocks客户端用于与Freesocks服务器建立加密连接通道</li>
+	</ul>
+</div>
+<div class="head-con">
+	<img class="app-icon" src="./luci-static/images/app-icon/freesocks.png" />
+	<a href="javascript:history.go(-1);" class="head-btn-l">
+		<i class="head-btn icon icon_back"></i>
+		<span class="head-title">Freesocks</span>
+	</a>
+	<a href="/cgi-bin#/pc/freesocksSetApp" style="margin-right: 5%;float:right;text-decoration: none;"><span  class="head-title">高级设置</span></a>
+</div>
+<div class="set-con below-head">
+	<div id="freesocksDiv" class="tab-con table-con " style="display: block;"></div>
+	<div id="main_box" style="display: block;">
+		<ul class="set-con set-con-switch switch-bottom">
+			<li>
+				<p class="set-con-desc">
+					<label class="tip-lbl">  &nbsp;</label>
+				</p>
+			<li>
+		</ul>
+		<ul class="set-con">
+			<li class="text-con">
+				<div id="server_box" style="display: block;">
+					<label class="desc-lbl">服务器</label>
+					<span id="SelectServer" class="select">
+						<span class="value sel-value"></span>
+						<i class="tip icon_list-expansion"></i>
+					</span>
+				</div>
+			<li>
+		</ul>
+		<ul class="set-con">
+			<li class="text-con text-con-focus">
+				<label class="desc-lbl">运行状态</label>
+				<input id="CurSwVer" class="text hover" readonly="readonly" value="<%=Run_str%>">
+			<li>
+		</ul>
+		<div class="btn-con">
+			<input id="Save" class="btn" type="button" value="保存" onclick="SaveConfig();" />
+		</div>
+  </div>
+</div>

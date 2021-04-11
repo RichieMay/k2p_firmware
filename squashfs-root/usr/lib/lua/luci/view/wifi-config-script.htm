@@ -1,0 +1,71 @@
+<script type="text/javascript">
+
+	function checkSsid(ssid,band){
+		var bandType = band.toUpperCase();
+
+		if("" == ssid){
+			return eval("E_WIFI"+bandType+"_SSID_BLANK");
+		}
+
+		if (checkStrLen(ssid, 32, 1) != E_NONE){
+			return eval("E_WIFI"+bandType+"_SSID_LEN");
+		}
+
+		return E_NONE;
+	}
+
+	function checkPwd(password,band,smart){
+		var bandType = band.toUpperCase();
+
+		var err = checkStrFormat(password);
+		switch(err){
+		case E_STRINGBLANK:
+			return E_NONE;
+		case E_STRINGFORMAT:
+			return eval("E_WIFI"+bandType+"_PWD_ILLEGAL");
+		}
+
+		if (checkStrLen(password, 63, 8) != E_NONE){
+			return eval("E_WIFI"+bandType+"_PWD_LEN");
+		}
+
+		return E_NONE;
+	}
+
+	function handleWifiError(errCode, callback, smart){
+		var newErrCode = errCode;
+		if(smart && parseInt(smart)){
+			switch(errCode){
+				case E_GUESET_SSID_WIFI2G_SAME:
+				case E_GUESET_SSID_WIFI5G_SAME:
+					newErrCode = E_GUESET_SSID_WIFI2G_SAME_SMART;
+					break;
+				case E_WIFI2G_SSID_GUEST_SAME:
+				case E_WIFI5G_SSID_GUEST_SAME:
+					newErrCode = E_WIFI2G_SSID_GUEST_SAME_SMART;
+					break;
+				case E_WIFI2G_PWD_ILLEGAL:
+				case E_WIFI5G_PWD_ILLEGAL:
+					newErrCode = E_WIFI2G_PWD_ILLEGAL_SMART;
+					break;
+				case E_WIFI2G_PWD_LEN:
+				case E_WIFI5G_PWD_LEN:
+					newErrCode = E_WIFI2G_PWD_LEN_SMART;
+					break;
+				case E_WIFI2G_SSID_LEN:
+				case E_WIFI5G_SSID_LEN:
+					newErrCode = E_WIFI2G_SSID_LEN_SMART;
+					break;
+				case E_WIFI2G_SSID_BLANK:
+				case E_WIFI5G_SSID_BLANK:
+					newErrCode = E_WIFI2G_SSID_BLANK_SMART;
+					break;
+				case E_WIFI2G_SSID_GUEST5G_SAME:
+				case E_WIFI5G_SSID_GUEST5G_SAME:
+					newErrCode = E_WIFI2G_SSID_GUEST5G_SAME_SMART;
+					break;
+			}
+		}
+		return handleError(newErrCode, callback, smart);
+	}
+</script>

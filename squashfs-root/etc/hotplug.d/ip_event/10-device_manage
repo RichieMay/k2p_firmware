@@ -1,0 +1,40 @@
+#!/bin/sh
+# Notice: $ACTION = ONLINE/OFFLINE; $IP; $MAC; $IFTYPE; $NATMODE
+
+. /usr/lib/device_manage_set.sh
+
+CONFIG="device_manage"
+section_name=${MAC//:/_}
+
+tx_rate=$(uci get $CONFIG.$section_name.tx_rate)
+rx_rate=$(uci get $CONFIG.$section_name.rx_rate)
+if_type="$(uci get $CONFIG.$section_name.if_type)"
+
+if [ "$ACTION" = "ONLINE" ]; then
+	rate_limit_set $IP "dst" $rx_rate "0"
+	rate_limit_set $IP "src" $tx_rate "0"
+
+	if [ "$NATMODE" = "HWNAT" ]; then
+		switch_nat_mode $IP $rx_rate $tx_rate 0 0 $ACTION $section_name $if_type
+	fi
+
+	report=$(uci get http_report.online.report)
+	if [ $report -eq 1 ]; then
+		if [ $if_type = "4" ]; then
+			uci get reward_device.$section_name
+			if [ $? == 0 ]; then
+				ubus call http device_online
+			fi
+		else
+			ubus call http device_online
+		fi
+	fi
+elif [ "$ACTION" = "OFFLINE" ]; then
+	rate_limit_set $IP "dst" "0" $rx_rate
+	rate_limit_set $IP "src" "0" $tx_rate
+
+	if [ "$NATMODE" = "HWNAT" ]; then
+		switch_nat_mode $IP $rx_rate $tx_rate 0 0 $ACTION $section_name $if_type
+	fi
+fi
+

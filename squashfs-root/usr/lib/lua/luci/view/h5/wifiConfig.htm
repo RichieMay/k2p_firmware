@@ -1,0 +1,643 @@
+<style type="text/css">li.select-con{width:2rem}li.text-con span.sel-min{width:50%!important;padding:0 .4rem}i.tip_select{position:absolute;right:.05rem;top:.15rem;font-size:.8rem}span.time-to{display:inline-block;vertical-align:middle;font-size:.417rem;color:#4f5356}ul.sel-list{overflow:auto;max-height:4.4rem}span.high-set{float:right;color:#fe8f19;font-size:.347rem;margin-right:.3rem;height:1.067rem;line-height:1.067rem}ul.set-con-title{border-bottom:0}label.wifi-title{font-weight:bold}</style>
+<%+wifi-config-script%>
+<script type="text/javascript">
+(function(){
+	<%
+		local dev_para = {
+			dev_feature = {wifi_timing = {}, smart_connect = {}}
+		}
+		local dev_result = tpl_get_data(dev_para)
+		local wifi_timing_cap = dev_result[K_MODULE].dev_feature.wifi_timing.support
+		local smart_connect_cap = dev_result[K_MODULE].dev_feature.smart_connect.support
+
+		local para = {
+			wireless = {wifi_2g_config = {}, wifi_5g_config = {}, wifi_config = {}},
+			wisp = {config = {}},
+			dev_feature = {wifi_2g = {}, wifi_5g = {}, wifi = {}}
+		}
+
+		if "1" == wifi_timing_cap then
+			para.wireless["wireless_time_switch"] = {}
+		end
+
+		if "1" == smart_connect_cap then
+			para.wireless["smart_connect"] = {}
+		end
+
+		local data = tpl_get_data(para, true)
+	-%>
+
+	var wirelessInfo = <%=data%>;
+	var seniorStatus = 0;
+	var muMimoCap;
+	var beamformingCap;
+	var smartConnectCap = "<%=smart_connect_cap%>";
+	var wifiTimingCap = "<%=wifi_timing_cap%>";
+	var countryCodeCap = "0";
+	var supportCountryCodeList = [];
+
+	function getHour(time){
+		var hour = parseInt(time/3600);
+		return hour;
+	}
+
+	function getMinute(time){
+		var minute = parseInt(time%3600);
+		minute = parseInt(minute/60);
+		return minute;
+	}
+
+	function setTimeData(hour, minute){
+		var time;
+		time = hour * 3600;
+		time += minute * 60;
+		return time;
+	}
+
+	function init(result){
+		var errNo = result[ERR_CODE];
+		var ret;
+		if (E_NONE == errNo){
+			ret = result[K_MODULE];
+		}else{
+			console.log(result);
+			return;
+		}
+
+		muMimoCap = ret.dev_feature.wifi_2g.mu_mimo;
+		beamformingCap = ret.dev_feature.wifi_2g.beamforming;
+		supportCountryCodeList = ret.dev_feature.wifi.country_code;
+		supportCountryCodeList = supportCountryCodeList == undefined?[]:supportCountryCodeList;
+		countryCodeCap = supportCountryCodeList.length>0?"1":"0";
+
+		var wireless2G = ret.wireless.wifi_2g_config;
+		var wireless5G = ret.wireless.wifi_5g_config;
+		var wireless = ret.wireless.wifi_config;
+		var wispStatus = ret.wisp.config;
+		$("#Ssid2G").val(wireless2G.ssid);
+		$("#Ssid5G").val(wireless5G.ssid);
+		$("#Pwd2G").val(wireless2G.password);
+		$("#Pwd5G").val(wireless5G.password);
+
+		if ("1" == smartConnectCap) {
+			var smartConnect;
+			smartConnect = ret.wireless.smart_connect;
+			initSwitch("Two2One", smartConnect.enable, function(state, init){
+				if (0 == state){
+					$("#Wifi5G").show();
+					$("#WifiName").html(label.wifi2G);
+				}else{
+					$("#Wifi5G").hide();
+					$("#WifiName").html(label.wifiName);
+					closeNote();
+				}
+
+				if (!init){
+					$("#Ssid5G").val(getStrInMaxByte($("#Ssid2G").val(), 29) + "_5G");
+				}
+			});
+		} else {
+			$("#CanSmartConn").hide();
+		}
+
+		if ("0" == smartConnectCap){
+		}
+
+		if ("1" == wispStatus.enable && "0" == wispStatus.band){
+			$("#Senior2G").hide();
+			$("#Senior5G").show();
+			$("#WispShow2G").show();
+		}else if("1" == wispStatus.enable && "1" == wispStatus.band){
+			$("#Senior5G").hide();
+			$("#Senior2G").show();
+			$("#WispShow5G").show();
+		}else{
+			$("#Senior2G").show();
+			$("#Senior5G").show();
+		}
+
+		var selBandWidth2G = id("BandWidth2G");
+		var wifiMode2G = [{name:label.wifiBmode, value:0},
+					   {name:label.wifiGmode, value:1},
+					   {name:label.wifiNmode, value:2}];
+
+		var bandWidthN2GAll = [{name:label.bandWidth2, value:0},
+					   {name:label.bandWidth24, value:1},
+					   {name:label.bandWidth4, value:2}];
+		var bandWidthN2G = productSelect(bandWidthN2GAll, ret.dev_feature.wifi_2g.band_width);
+
+		var bandWidthBG2G = [{name:label.bandWidth2, value:0}];
+
+		initSelect("BandWidth2G", bandWidthN2G, wireless2G.band_width);
+
+		initSelect("WifiMode2G", wifiMode2G, wireless2G.mode, function(val, init){
+			if ("1" == val){
+				selBandWidth2G.resetOptions(bandWidthBG2G, 0);
+			}else{
+				wireless2G.band_width = $("#BandWidth2G").attr("data-value");
+				selBandWidth2G.resetOptions(bandWidthN2G, wireless2G.band_width);
+			}
+		});
+
+		var channel2GAll = [{name:label.auto, value:0},
+					   {name:1, value:1},
+					   {name:2, value:2},
+					   {name:3, value:3},
+					   {name:4, value:4},
+					   {name:5, value:5},
+					   {name:6, value:6},
+					   {name:7, value:7},
+					   {name:8, value:8},
+					   {name:9, value:9},
+					   {name:10, value:10},
+					   {name:11, value:11},
+					   {name:12, value:12},
+					   {name:13, value:13}];
+
+		var channel2G = productSelect(channel2GAll, ret.dev_feature.wifi_2g.channel);
+
+		initSelect("Channel2G", channel2G, wireless2G.channel);
+
+		var wifiMode5G = [{name:label.wifiAmode, value:0},
+					   {name:label.wifiCmode, value:1}];
+
+		initSelect("WifiMode5G", wifiMode5G, wireless5G.mode);
+
+		var selBandWidth5G = id("BandWidth5G");
+		var bandWidth5GLess = [{name:label.bandWidth2, value:0}];
+
+		var bandWidth5GALL = [{name:label.bandWidth2, value:0},
+					   {name:label.bandWidth24, value:4},
+					   {name:label.bandWidth4, value:1},
+					   {name:label.bandWidth8, value:2},
+					   {name:label.bandWidth248, value:3}];
+		var bandWidth5G = productSelect(bandWidth5GALL, ret.dev_feature.wifi_5g.band_width);
+		initSelect("BandWidth5G", bandWidth5G, wireless5G.band_width);
+
+		var channel5GAll = [{name:label.auto, value:0},
+					   {name:36, value:36},
+					   {name:40, value:40},
+					   {name:44, value:44},
+					   {name:48, value:48},
+					   {name:149, value:149},
+					   {name:153, value:153},
+					   {name:157, value:157},
+					   {name:161, value:161},
+					   {name:165, value:165}];
+
+		var channel5G = productSelect(channel5GAll, ret.dev_feature.wifi_5g.channel);
+
+		initSelect("Channel5G", channel5G, wireless5G.channel, function(val, init){
+			if ("165" == val){
+				selBandWidth5G.resetOptions(bandWidth5GLess, 0);
+			}else{
+				wireless5G.band_width = $("#BandWidth5G").attr("data-value");
+				selBandWidth5G.resetOptions(bandWidth5G, wireless5G.band_width);
+			}
+		});
+
+		function selectChannel5GByCountry(channel5GAll, countryCode){
+			var channelListEU = [0, 36, 40, 44, 48];
+			var channelListAS = [0, 36, 40, 44, 48, 149, 153, 157, 161, 165];
+			var channelLIstCountry = eval("channelList" + countryCode);
+			return productSelect(channel5GAll, channelLIstCountry);
+		}
+		function showSeniorCountryCode(show){
+			if("1" == show && "1" == countryCodeCap){
+				$("#SeniorCountryCode").show();
+			} else {
+				$("#SeniorCountryCode").hide();
+			}
+		}
+
+		var countryCodeAll = [{name:label.europe, value:"EU"},
+							{name:label.asia, value:"AS"}];
+		var countryCodeList = productSelect(countryCodeAll, supportCountryCodeList);
+		var selChannel5G = id("Channel5G");
+		if ("1" == countryCodeCap){
+			initSelect("CountryCode", countryCodeList, wireless.country_code, function(val, init){
+				var channelList = selectChannel5GByCountry(channel5G, val);
+				var channelInit = channelList.some(function(t){ return t.value == wireless5G.channel;})?wireless5G.channel:0;
+				selChannel5G.resetOptions(channelList, channelInit);
+			});
+		} else {
+			showSeniorCountryCode("0");
+		}
+
+		initSwitch("Switch2G", wireless2G.enable);
+		initSwitch("HideSsid2G", wireless2G.hidden);
+		initSwitch("WifiIsolation2G", wireless2G.ap_isolate);
+		initSwitch("Switch5G", wireless5G.enable);
+		initSwitch("HideSsid5G", wireless5G.hidden);
+		initSwitch("WifiIsolation5G", wireless5G.ap_isolate);
+
+		if ("1" == muMimoCap) {
+			initSwitch("WifiMuMimo", wireless2G.mu_mimo);
+		} else {
+			$("#CanMuMimo").hide();
+		}
+		if ("1" == beamformingCap) {
+			initSwitch("WifiBeamForming", wireless2G.beamforming);
+		} else {
+			$("#CanBeamForming").hide();
+		}
+
+		if ("1" == wifiTimingCap){
+			var wirelessTime = ret.wireless.wireless_time_switch;
+			var hourList = [];
+			var hour;
+			for (var i = 0; i < 24; i++){
+				if (i.toString().length == 1){
+					hour = "0" + i;
+				}else{
+					hour = i;
+				}
+				hourList.push({name : hour, value : i});
+			}
+
+			var minList = [];
+			var min, val;
+			for (var i = 0; i < 12; i++){
+				if (i < 2){
+					min = "0" + i * 5;
+				}else{
+					min = i * 5;
+				}
+				val = i * 5;
+				minList.push({name : min, value : val});
+			}
+
+			initSwitch("TimeSwitch", wirelessTime.enable, function(state){
+				if (1 == state){
+					$("#CloseTime").show();
+				}else{
+					$("#CloseTime").hide();
+					closeNote();
+				}
+			});
+			initSelect("CloseHour", hourList, getHour(wirelessTime.close_time));
+			initSelect("CloseMin", minList, getMinute(wirelessTime.close_time));
+			initSelect("OpenHour", hourList, getHour(wirelessTime.open_time));
+			initSelect("OpenMin", minList, getMinute(wirelessTime.open_time));
+		}else{
+			$("#TimeSet").hide();
+		}
+	}
+
+	init(wirelessInfo);
+
+	$("#SeniorSet").click(function(){
+		if (seniorStatus == 1){
+			$("#WirelessSenior").hide();
+			$("#SeniorSet").text(label.openSenior);
+			seniorStatus = 0;
+		}else{
+			$("#WirelessSenior").show();
+			$("#SeniorSet").text(label.closeSenior);
+			seniorStatus = 1;
+		}
+	});
+
+	$("#Save").click(function(){
+		if ("1" == smartConnectCap && 1 == $("#Two2One").attr("data-value")){
+			$("#Ssid5G").val($("#Ssid2G").val());
+			$("#Pwd5G").val($("#Pwd2G").val());
+			$("#Switch5G").attr("data-value" , $("#Switch2G").attr("data-value"));
+			$("#HideSsid5G").attr("data-value" , $("#HideSsid2G").attr("data-value"));
+		}
+
+		saveWifi();
+
+	});
+	function sendConfig(para){
+		apiSetWithModule("wireless", para, function(ret){
+			var smartTips = smartConnectCap == "1"?para.wireless.smart_connect.enable:"0";
+			var code = ret[ERR_CODE];
+			if (E_NONE == code){
+				var time = getMaxWaitTime(ret);
+				$.setTimeout(function(){
+					closeLoading();
+					stateman.go("pc.wifiSet");
+				}, time * 1000);
+			}else{
+				handleWifiError(code, showNote, smartTips);
+				closeLoading();
+			}
+		});
+	}
+	function saveWifi(){
+		var para = {};
+		var wifi_2g_config = {};
+		var wifi_5g_config = {};
+		var wifi_config = {};
+
+		para.wireless = {};
+		para.wireless.wifi_2g_config = wifi_2g_config;
+		para.wireless.wifi_5g_config = wifi_5g_config;
+		para.wireless.wifi_config = wifi_config;
+
+		var smart_connect = {};
+		if ("1" == smartConnectCap){
+			para.wireless.smart_connect = smart_connect;
+			smart_connect.enable = $("#Two2One").attr("data-value");
+		} else {
+			smart_connect.enable = 0;
+		}
+		wifi_2g_config.enable = $("#Switch2G").attr("data-value");
+		wifi_2g_config.ssid = $("#Ssid2G").val();
+		wifi_2g_config.password = $("#Pwd2G").val();
+		wifi_2g_config.hidden = $("#HideSsid2G").attr("data-value");
+		wifi_2g_config.mode = $("#WifiMode2G").attr("data-value");
+		wifi_2g_config.channel = $("#Channel2G").attr("data-value");
+		wifi_2g_config.band_width = $("#BandWidth2G").attr("data-value");
+		wifi_2g_config.ap_isolate = $("#WifiIsolation2G").attr("data-value");
+		wifi_5g_config.enable = $("#Switch5G").attr("data-value");
+		wifi_5g_config.ssid = $("#Ssid5G").val();
+		wifi_5g_config.password = $("#Pwd5G").val();
+		wifi_5g_config.hidden = $("#HideSsid5G").attr("data-value");
+		wifi_5g_config.mode = $("#WifiMode5G").attr("data-value");
+		wifi_5g_config.channel = $("#Channel5G").attr("data-value");
+		wifi_5g_config.band_width = $("#BandWidth5G").attr("data-value");
+		wifi_5g_config.ap_isolate = $("#WifiIsolation5G").attr("data-value");
+
+		if ("1" == wifiTimingCap){
+			var closeHour = $("#CloseHour").attr("data-value");
+			var closeMinute = $("#CloseMin").attr("data-value");
+			var openHour = $("#OpenHour").attr("data-value");
+			var openMinute = $("#OpenMin").attr("data-value");
+			var wireless_time_switch = {};
+			para.wireless.wireless_time_switch = wireless_time_switch;
+			wireless_time_switch.enable = $("#TimeSwitch").attr("data-value");
+			wireless_time_switch.close_time = setTimeData(closeHour, closeMinute);
+			wireless_time_switch.open_time = setTimeData(openHour, openMinute);
+		}
+
+		if ("1" == muMimoCap) {
+			wifi_2g_config.mu_mimo = $("#WifiMuMimo").attr("data-value");
+			wifi_5g_config.mu_mimo = $("#WifiMuMimo").attr("data-value");
+		}
+
+		if ("1" == beamformingCap) {
+			wifi_2g_config.beamforming = $("#WifiBeamForming").attr("data-value");
+			wifi_5g_config.beamforming = $("#WifiBeamForming").attr("data-value");
+		}
+
+		if ("1" == countryCodeCap) {
+			wifi_config.country_code = $("#CountryCode").attr("data-value");
+		}
+
+		var bandType = "2g";
+		if (handleWifiError(checkSsid(wifi_2g_config.ssid, bandType), showNote, smart_connect.enable)){
+			return;
+		}
+
+		if (handleWifiError(checkPwd(wifi_2g_config.password, bandType), showNote, smart_connect.enable)){
+			return;
+		}
+
+		bandType = "5g";
+		if (handleWifiError(checkSsid(wifi_5g_config.ssid, bandType))){
+			return;
+		}
+
+		if (handleWifiError(checkPwd(wifi_5g_config.password, bandType))){
+			return;
+		}
+
+		if (wifi_5g_config.ssid == wifi_2g_config.ssid && wifi_5g_config.password != wifi_2g_config.password){
+			handleWifiError(E_WIFI2G_WIFI5G_SSID_SAME, showNote, smart_connect.enable);
+			return;
+		}
+
+		if (0 == wifi_2g_config.enable && 0 == wifi_5g_config.enable){
+			showConfirm(errStr.closeWifi, function(choose){
+				if (choose){
+					showLoading(label.saveWifi);
+					sendConfig(para);
+				}
+			});
+		} else if (wifi_2g_config.password == "" || wifi_5g_config.password == ""){
+			showConfirm(errStr.emptyWifiPwd, function(choose){
+				if (choose){
+					showLoading(label.saveWifi);
+					sendConfig(para);
+				}
+			});
+		} else {
+			showLoading(label.saveWifi);
+			sendConfig(para);
+		}
+	}
+
+	$("#PageTitle").text(label.wifiSet);
+})();
+</script>
+<div class="set-con below-head">
+	<ul class="blank-bg"></ul>
+	<div id="CanSmartConn">
+		<ul class="set-con">
+			<div class="switch-con">
+				<label class="desc-title">{%label.twoInone%}</label>
+				<span id="Two2One" class="switch">
+					<i class="switch-circle"></i>
+				</span>
+			</div>
+			<p class="desc-tetail">{%label.wifiRemark%}</p>
+		</ul>
+		<ul class="blank-bg"></ul>
+	</div>
+	<ul class="set-con">
+		<label class="desc-lbl wifi-title">{%label.wifi2G%}</label>
+		<span id="Switch2G" class="switch">
+			<i class="switch-circle"></i>
+		</span>
+	</ul>
+	<ul class="set-con">
+		<label class="desc-lbl">{%label.ssidName%}</label>
+		<li class="text-con">
+			<input id="Ssid2G" class="text hover" maxLength="32" value="" />
+		</li>
+	</ul>
+	<ul class="set-con">
+		<label class="desc-lbl">{%label.password%}</label>
+		<li class="text-con">
+			<input id="Pwd2G" class="text hover" maxLength="63" value="" /><i class="tip icon-eye" data-value="0"></i>
+		</li>
+	</ul>
+	<ul class="set-con">
+		<label class="desc-lbl">{%label.hideSsid%}</label>
+		<span id="HideSsid2G" class="switch">
+			<i class="switch-circle"></i>
+		</span>
+	</ul>
+	<div id="Wifi5G">
+		<ul class="blank-bg"></ul>
+		<ul class="set-con">
+			<label class="desc-lbl wifi-title">{%label.wifi5G%}</label>
+			<span id="Switch5G" class="switch">
+				<i class="switch-circle"></i>
+			</span>
+		</ul>
+		<ul class="set-con">
+			<label class="desc-lbl">{%label.ssidName%}</label>
+			<li class="text-con">
+				<input id="Ssid5G" class="text hover" maxLength="32" value="" />
+			</li>
+		</ul>
+		<ul class="set-con">
+			<label class="desc-lbl">{%label.password%}</label>
+			<li class="text-con">
+				<input id="Pwd5G" class="text hover" maxLength="63" value="" /><i class="tip icon-eye" data-value="0"></i>
+			</li>
+		</ul>
+		<ul class="set-con">
+			<label class="desc-lbl">{%label.hideSsid%}</label>
+			<span id="HideSsid5G" class="switch">
+				<i class="switch-circle"></i>
+			</span>
+		</ul>
+	</div>
+	<div id="Timeset">
+		<ul class="blank-bg"></ul>
+		<ul class="set-con time-switch">
+			<label class="desc-lbl">{%label.timingSwitch%}</label>
+			<span id="TimeSwitch" class="switch">
+				<i class="switch-circle"></i>
+			</span>
+		</ul>
+		<ul id="CloseTime" class="set-con time-switch">
+			<label class="desc-lbl">{%label.closeTimePeriod%}</label>
+			<li class="text-con select-con">
+				<span id="CloseHour" class="select sel-min" data-value="0">
+					<span class="select-value"></span>
+					<i class="tip_select icon_list-expansion"></i>
+				</span>
+			</li>
+			<li class="text-con select-con">
+				<span id="CloseMin" class="select sel-min" data-value="0">
+					<span class="select-value"></span>
+					<i class="tip_select icon_list-expansion"></i>
+				</span>
+			</li>
+			<span class="time-to">{%label.colon%}</span>
+			<li class="text-con select-con">
+				<span id="OpenHour" class="select sel-min" data-value="0">
+					<span class="select-value"></span>
+					<i class="tip_select icon_list-expansion"></i>
+				</span>
+			</li>
+			<li class="text-con select-con">
+				<span id="OpenMin" class="select sel-min" data-value="0">
+					<span class="select-value"></span>
+					<i class="tip_select icon_list-expansion"></i>
+				</span>
+			</li>
+		</ul>
+	</div>
+	<ul class="blank-bg"></ul>
+	<ul id="OptionSenior" class="set-con high-con set-second">
+		<div class="high-top">
+			<label class="desc-lbl">{%label.seniorSet%}</label>
+			<span id="SeniorSet" class="high-set">{%label.openSenior%}</span>
+		</div>
+	</ul>
+	<div id="WirelessSenior" class="hidden">
+		<ul class="blank-bg"></ul>
+		<div id="Senior2G" class="hidden">
+			<ul class="set-con-title">
+				<label class="title-desc-lbl">{%label.wifiSet2G%}</label>
+			</ul>
+			<ul class="set-con">
+				<label class="desc-lbl">{%label.wifiMode%}</label>
+				<li class="text-con">
+					<span id="WifiMode2G" class="select">
+						<span class="select-value"></span>
+						<i class="tip icon_list-expansion"></i>
+					</span>
+				</li>
+			</ul>
+			<ul class="set-con">
+				<label class="desc-lbl">{%label.channel%}</label>
+				<li class="text-con">
+					<span id="Channel2G" class="select">
+						<span class="select-value"></span>
+						<i class="tip icon_list-expansion"></i>
+					</span>
+				</li>
+			</ul>
+			<ul class="set-con">
+				<label class="desc-lbl">{%label.bandWidth%}</label>
+				<li class="text-con">
+					<span id="BandWidth2G" class="select">
+						<span class="select-value"></span>
+						<i class="tip icon_list-expansion"></i>
+					</span>
+				</li>
+			</ul>
+		</div>
+		<ul class="set-con">
+			<label class="desc-lbl">{%label.apIsolation%}</label>
+			<span id="WifiIsolation2G" class="switch">
+				<i class="switch-circle"></i>
+			</span>
+		</ul>
+		<div id="Senior5G" class="hidden">
+			<ul class="blank-bg"></ul>
+			<ul class="set-con-title">
+				<label class="title-desc-lbl">{%label.wifiSet5G%}</label>
+			</ul>
+			<ul class="set-con">
+				<label class="desc-lbl">{%label.wifiMode%}</label>
+				<li class="text-con">
+					<span id="WifiMode5G" class="select">
+						<span class="select-value"></span>
+						<i class="tip icon_list-expansion"></i>
+					</span>
+				</li>
+			</ul>
+			<ul class="set-con">
+				<label class="desc-lbl">{%label.channel%}</label>
+				<li class="text-con">
+					<span id="Channel5G" class="select">
+						<span class="select-value"></span>
+						<i class="tip icon_list-expansion"></i>
+					</span>
+				</li>
+			</ul>
+			<ul class="set-con">
+				<label class="desc-lbl">{%label.bandWidth%}</label>
+				<li class="text-con">
+					<span id="BandWidth5G" class="select">
+						<span class="select-value"></span>
+						<i class="tip icon_list-expansion"></i>
+					</span>
+				</li>
+			</ul>
+		</div>
+		<ul class="set-con">
+			<label class="desc-lbl">{%label.apIsolation%}</label>
+			<span id="WifiIsolation5G" class="switch">
+				<i class="switch-circle"></i>
+			</span>
+		</ul>
+		<ul class="set-con" id="CanMuMimo">
+			<label class="desc-lbl">{%label.muMimo%}</label>
+			<span id="WifiMuMimo" class="switch">
+				<i class="switch-circle"></i>
+			</span>
+		</ul>
+		<ul class="set-con" id="CanBeamForming">
+			<label class="desc-lbl">{%label.beamForming%}</label>
+			<span id="WifiBeamForming" class="switch">
+				<i class="switch-circle"></i>
+			</span>
+		</ul>
+	</div>
+	<div class="err-note hidden">
+		<i class="err-icon icon_remind_line"></i>
+		<p class="note-str"></p>
+	</div>
+	<div class="btn-con">
+		<input id="Save" class="btn" type="button" value="{%btn.save%}" />
+	</div>
+</div>

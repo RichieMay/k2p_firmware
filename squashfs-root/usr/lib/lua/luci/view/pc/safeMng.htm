@@ -1,0 +1,600 @@
+<style type="text/css">span.safe-unit{position:absolute;left:310px;width:200px;font-size:14px;line-height:34px;padding:0 .5em;color:#4f5356;text-align:left}label.title-bold{font-weight:bold}ul.ul-border{border-bottom:1px solid #DDD;margin:10px 50px 10px}div.tab-con{font-size:14px;color:#4f5356;text-align:center;margin:20px 50px 10px}table.set-con{width:100%;border-collapse:collapse;table-layout:fixed}.table-caption{margin:0 auto 20px}.boder-tr{border-bottom:1px solid #e7e7e7;height:40px;line-height:40px;background-color:#f4f4f4}.set-con-long{width:25%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left;padding-left:10px}.set-con-short{width:15%;text-align:right;padding-right:15px}.table-height{height:40px;line-height:40px;border-bottom:1px solid #e7e7e7}input.dev-name{width:100%}span.text-con{width:160px;line-height:40px;display:inline-block;vertical-align:middle;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}span.allow-internet{text-align:right}span.handle-tip{display:inline-block;width:50%;line-height:40px;cursor:pointer}ul.add-item{margin-top:4px;font-size:32px;margin-left:20px;text-align:left}ul span.all-move{font-size:14px;padding-right:10px;line-height:42px;display:inline-block;vertical-align:top;float:right;cursor:pointer}</style>
+<script type="text/javascript">
+(function(){
+	<%
+		local para = {
+			safe_set = {config = {}, arp_config = {}, arp_bind_list = {}},
+			dhcpd = {bind_list = {}},
+			device_manage = {client_list = {}}
+		}
+
+		local data = tpl_get_data(para, true)
+	-%>
+
+	var safeInfo = <%=data%>;
+	var blockList, bindList;
+
+	var dhcpBindList = safeInfo[K_MODULE].dhcpd.bind_list;
+	var deviceList = safeInfo[K_MODULE].device_manage.client_list;
+
+	function init(result){
+		var errNo = result[ERR_CODE];
+		var ret;
+		if (E_NONE == errNo){
+			ret = result[K_MODULE];
+		}else{
+			console.log(result);
+			return;
+		}
+
+		var safe = ret.safe_set.config;
+
+		initSwitch("DosSwitch", safe.dos, function(state){
+			if (1 == state){
+				$("#DosAttack").show();
+				$("#Border").show();
+			}else{
+				$("#DosAttack").hide();
+				if($("#ArpDefenceSwitch").attr("data-value") == 0){
+					$("#Border").hide();
+				}
+			}
+		});
+
+		initSwitch("IcmpSwitch", safe.icmp_flood, function(state){
+			if (1 == state){
+				$("#IcmpFloodSet").show();
+			}else{
+				$("#IcmpFloodSet").hide();
+				$(".err-note").hide();
+			}
+		});
+
+		initSwitch("UdpSwitch", safe.udp_flood, function(state){
+			if (1 == state){
+				$("#UdpFloodSet").show();
+			}else{
+				$("#UdpFloodSet").hide();
+				$(".err-note").hide();
+			}
+		});
+
+		initSwitch("TcpSwitch", safe.tcp_flood, function(state){
+			if (1 == state){
+				$("#TcpFloodSet").show();
+			}else{
+				$("#TcpFloodSet").hide();
+				$(".err-note").hide();
+			}
+		});
+
+		initSwitch("PingSwitch", safe.ping_disable);
+		$("#IcmpFlood").val(safe.icmp_threshold);
+		$("#UdpFlood").val(safe.udp_threshold);
+		$("#TcpFlood").val(safe.tcp_threshold);
+
+		var arpConfig = ret.safe_set.arp_config;
+
+		initSwitch("ArpDefenceSwitch", arpConfig.arp_defence, function(state){
+			if (1 == state){
+				$("#ArpDefence").show();
+				$("#Border").show();
+				$("#ArpBindingTab").show();
+				if($("#ArpCheatingSwitch").attr("data-value") == 1){
+					$("#ArpBlockTab").show();
+				}else{
+					$("#ArpBlockTab").hide();
+				}
+			}else{
+				$("#ArpDefence").hide();
+				$("#ArpBlockTab").hide();
+				$("#ArpBindingTab").hide();
+				if($("#DosSwitch").attr("data-value") == 0){
+					$("#Border").hide();
+				}
+			}
+		});
+
+		initSwitch("ArpFloodSwitch", arpConfig.arp_flood, function(state){
+			if (1 == state){
+				$("#ArpFloodSet").show();
+			}else{
+				$("#ArpFloodSet").hide();
+				$(".err-note").hide();
+			}
+		});
+
+		initSwitch("ArpCheatingSwitch", arpConfig.arp_cheating, function(state){
+			if (1 == state){
+				$("#ArpCheatingSet").show();
+				$("#ArpBlockTab").show();
+			}else{
+				$("#ArpCheatingSet").hide();
+				$("#ArpBlockTab").hide();
+				$(".err-note").hide();
+			}
+		});
+
+		$("#ArpThreshold").val(arpConfig.arp_threshold);
+		$("#ArpInterval").val(arpConfig.arp_interval);
+
+		blockList = arpConfig.block_list;
+		if(blockList.length == 0){
+			$("#OnekeyDelete").hide();
+		}else{
+			for (var i = 0; i < blockList.length; i++){
+				$("#BlockTable").append(initBlockEntry(blockList[i], i));
+			}
+			$("#OnekeyDelete").show();
+		}
+
+		initBlockListSwitch("span.internet-switch", onBlockListSwitchClick);
+
+		bindList = ret.safe_set.arp_bind_list;
+		for (var i = 0; i < bindList.length; i++){
+			$("#BindTable").append(initBindEntry(bindList[i], i));
+		}
+
+	}
+
+	init(safeInfo);
+
+	function initBlockEntry(client, idx){
+		var name = "Unknown";
+		var enable = 1;
+
+		for(var i = 0; i < deviceList.length; i++){
+			if(deviceList[i].mac.toLocaleUpperCase() == client.mac.toLocaleUpperCase()){
+				client.mac = client.mac.toLocaleUpperCase();
+				name = deviceList[i].name;
+				enable = deviceList[i].internet_enable;
+				break;
+			}
+		}
+
+		return '<tr class="table-height" data-index="' + idx + '">' +
+					'<td class="set-con-long">' +
+						'<span class="text-con dev-name" title="'+ name +'">' + name + '</span>' +
+					'</td>' +
+					'<td class="set-con-long">' +
+						'<span class="text-con ip-addr">' + client.ip + '</span>' +
+					'</td>' +
+					'<td class="set-con-long">' +
+						'<span class="text-con mac-addr">' + client.mac + '</span>' +
+					'</td>' +
+					'<td class="set-con-short">' +
+						'<span class="switch internet-switch allow-internet" data-switch="'+ enable +'"><i class="switch-circle"></i></span>'
+					'</td>' +
+				'</tr>';
+	}
+
+	function initBlockListSwitch(filter, callback){
+		$(filter).each(function(){
+			var state = $(this).attr("data-switch");
+			if (1 == state){
+				$(this).attr("data-value", "1").css({textAlign: "right", backgroundColor: "#FE9818"});
+			}else{
+				$(this).attr("data-value", "0").css({textAlign: "left", backgroundColor: "#B2B2B2"});
+			}
+		}).click(function(){
+			var idx = parseInt($(this).parents("tr").attr("data-index"), 10);
+			var state = $(this).attr("data-value");
+
+			if (0 == state){
+				$(this).attr("data-value", "1").css({textAlign: "right", backgroundColor: "#FE9818"});
+				callback && callback(1, idx);
+			}else{
+				$(this).attr("data-value", "0").css({textAlign: "left", backgroundColor: "#B2B2B2"});
+				callback && callback(0, idx);
+			}
+		});
+	};
+
+	function onBlockListSwitchClick(val, idx){
+		var data = {};
+		var para = {};
+
+		para.device_manage = {};
+		para.device_manage.client_list = data;
+
+		data.mac = blockList[idx].mac;
+		data.ip = blockList[idx].ip;
+		data.internet_enable = val;
+
+		apiSet(para);
+	}
+
+	function initBindEntry(client, idx){
+		var status = "";
+		if ("0" == client.bind_flag){
+			status = label.bind;
+		}else{
+			status = label.disBind;
+		}
+
+		var name = "Unknown";
+		for(var i = 0; i < deviceList.length; i++){
+			if(deviceList[i].mac.toLocaleUpperCase() == client.mac.toLocaleUpperCase()){
+				client.mac = client.mac.toLocaleUpperCase();
+				name = deviceList[i].name;
+				break;
+			}
+		}
+
+		return '<tr class="table-height" data-index="' + idx + '">' +
+					'<td class="set-con-long">' +
+						'<span class="text-con dev-name" title="'+ name +'">' + name + '</span>' +
+					'</td>' +
+					'<td class="set-con-long">' +
+						'<span class="text-con ip-addr">' + client.ip + '</span>' +
+					'</td>' +
+					'<td class="set-con-long">' +
+						'<span class="text-con mac-addr">' + client.mac + '</span>' +
+					'</td>' +
+					'<td class="set-con-short">' +
+						'<span class="handle-tip bind-item color-orange">' + status + '</span>' +
+					'</td>' +
+				'</tr>';
+	}
+
+	function checkItems(flood, safeType){
+		var err;
+		if(safeType == "ARPTHRESHOLD"){
+			err = checkNumNew(flood, 1, 1000);
+		}else if(safeType == "ARPINTERVAL"){
+			err = checkNumNew(flood, 1, 10);
+		}else{
+			err = checkNumNew(flood, 5, 3600);
+		}
+
+		switch(err){
+		case E_BLANK:
+			return eval("E_SAFE_"+safeType+"_BLANK");
+		case E_NUMFORMAT:
+			return eval("E_SAFE_"+safeType+"_ILLEGAL");
+		case E_NUMRANGE:
+			return eval("E_SAFE_"+safeType+"_RANGE");
+		}
+		return E_NONE;
+	}
+
+	function saveDosConfig(data){
+		data.enable = "1";
+		data.dos = $("#DosSwitch").attr("data-value");
+
+		if("1" == data.dos){
+			data.icmp_flood = $("#IcmpSwitch").attr("data-value");
+			data.udp_flood = $("#UdpSwitch").attr("data-value");
+			data.tcp_flood = $("#TcpSwitch").attr("data-value");
+			data.ping_disable = $("#PingSwitch").attr("data-value");
+
+			if("1" == data.icmp_flood){
+				data.icmp_threshold = $("#IcmpFlood").val();
+			}
+			if("1" == data.udp_flood){
+				data.udp_threshold = $("#UdpFlood").val();
+			}
+			if("1" == data.tcp_flood){
+				data.tcp_threshold = $("#TcpFlood").val();
+			}
+		}
+
+		if ("1" == data.dos && "1" == data.icmp_flood){
+			if (handleError(checkItems(data.icmp_threshold, "ICMP"))){
+				return -1;
+			}
+		}
+
+		if ("1" == data.dos && "1" == data.udp_flood){
+			if (handleError(checkItems(data.udp_threshold, "UDP"))){
+				return -1;
+			}
+		}
+
+		if ("1" == data.dos && "1" == data.tcp_flood){
+			if (handleError(checkItems(data.tcp_threshold, "TCPSYN"))){
+				return -1;
+			}
+		}
+
+		return data;
+	}
+
+	function saveArpConfig(arp_data){
+		arp_data.arp_defence = $("#ArpDefenceSwitch").attr("data-value");
+
+		if("1" == arp_data.arp_defence){
+			arp_data.arp_flood = $("#ArpFloodSwitch").attr("data-value");
+			arp_data.arp_cheating = $("#ArpCheatingSwitch").attr("data-value");
+
+			if("1" == arp_data.arp_flood){
+				arp_data.arp_threshold = $("#ArpThreshold").val();
+			}
+
+			if("1" == arp_data.arp_cheating){
+				arp_data.arp_interval = $("#ArpInterval").val();
+			}
+		}
+
+		if ("1" == arp_data.arp_defence && "1" == arp_data.arp_flood){
+			if (handleError(checkItems(arp_data.arp_threshold, "ARPTHRESHOLD"))){
+				return -1;
+			}
+		}
+
+		if ("1" == arp_data.arp_defence && "1" == arp_data.arp_cheating){
+			if (handleError(checkItems(arp_data.arp_interval, "ARPINTERVAL"))){
+				return -1;
+			}
+		}
+
+		return arp_data;
+	}
+
+	$("#Save").click(function(){
+		var data = {};
+		var para = {};
+		para.safe_set = {};
+		para.safe_set.config = saveDosConfig(data);
+
+		var arp_data = {};
+		para.safe_set.arp_config = saveArpConfig(arp_data);
+
+		if(para.safe_set.config != -1 && para.safe_set.arp_config != -1){
+			showLoading(label.saving);
+			apiSet(para, function(ret){
+				var code = ret[ERR_CODE];
+				if (E_NONE == code){
+					var time = getMaxWaitTime(ret);
+					$.setTimeout(function(){
+						closeLoading();
+						stateman.go("pc.safeMngApp");
+					}, time * 1000);
+				}else{
+					$.setTimeout(function(){
+						handleError(code, showNote);
+						closeLoading();
+					}, 800);
+				}
+			});
+		}else{
+			return;
+		}
+	});
+
+	$("#OnekeyDelete").click(function(){
+		var data = {};
+		var para = {};
+		para.safe_set = {};
+		para.safe_set.arp_block_list_config = data;
+
+		data.clear_block_list = "1";
+
+		showLoading(label.saving);
+		apiSet(para, function(ret){
+			var code = ret[ERR_CODE];
+			if (E_NONE == code){
+				$.setTimeout(function(){
+					closeLoading();
+					stateman.go("pc.safeMngApp");
+				}, ret[K_MODULE].safe_set.arp_block_list_config.wait_time * 1000);
+			}
+		});
+	});
+
+	$(".bind-item").click(function(){
+		var handle = $(this).text();
+		var bindValue = "1";
+
+		if(handle == label.bind){
+			bindValue = "1";
+			$(this).text(label.disBind);
+		}else{
+			bindValue = "0";
+			$(this).text(label.bind);
+		}
+
+		saveBindItem(this, bindValue);
+	});
+
+	function saveBindItem(curPt, val){
+		var idx = parseInt($(curPt).parents("tr").attr("data-index"), 10);
+
+		var data = {};
+		var para = {};
+		para.safe_set = {};
+		para.safe_set.arp_bind_list = data;
+
+		data.ip = bindList[idx].ip;
+		data.mac = bindList[idx].mac;
+		data.bind_flag = val;
+
+		showLoading(label.saving);
+		apiSet(para, function(ret){
+			var code = ret[ERR_CODE];
+			if (E_NONE == code){
+				$.setTimeout(function(){
+					closeLoading();
+					stateman.go("pc.safeMngApp");
+				}, ret[K_MODULE].safe_set.arp_bind_list.wait_time * 1000);
+			}else{
+				$.setTimeout(function(){
+					handleError(code);
+					closeLoading();
+				}, 800);
+			}
+		});
+	}
+})();
+</script>
+<div class="help hidden">
+	<ul class="help-content">
+		<li class="help-head">
+			<img class="app-icon" src="/luci-static/images/app-icon/security.png?_=20180420151033" />
+			<span class="help-title">{%label.safeMng%}</span>
+		</li>
+		<div id="HelpSafeMng">
+		</div>
+	</ul>
+</div>
+<div class="head-con">
+	<img class="app-icon" src="/luci-static/images/app-icon/security.png?_=20180420151033" />
+	<a href="javascript:history.go(-1);" class="head-btn-l">
+		<i class="head-btn icon icon_back"></i>
+		<span class="head-title">{%label.safeMng%}</span>
+	</a>
+</div>
+<div class="set-con below-head">
+	<ul class="set-con">
+		<li class="text-con">
+			<label class="desc-lbl title-bold">{%label.dosAttack%}</label>
+			<span class="set-con-middle">
+				<span id="DosSwitch" class="switch">
+					<i class="switch-circle"></i>
+				</span>
+			</span>
+		</li>
+	</ul>
+	<div id="DosAttack">
+		<ul class="set-con">
+			<li class="text-con">
+				<label class="desc-lbl">{%label.icmpFloodAttack%}</label>
+				<span class="set-con-middle">
+					<span id="IcmpSwitch" class="switch">
+						<i class="switch-circle"></i>
+					</span>
+				</span>
+			</li>
+		</ul>
+		<ul id="IcmpFloodSet" class="set-con">
+			<li class="text-con text-con-b">
+				<span class="safe-unit">{%label.valueUnit%}</span>
+				<label class="desc-lbl">{%label.icmpFloodVal%}</label>
+				<input id="IcmpFlood" class="text hover ime-mode-n text-length" maxLength="4" value="" />
+			</li>
+		</ul>
+		<ul class="set-con">
+			<li class="text-con">
+				<label class="desc-lbl">{%label.udpFloodAttack%}</label>
+				<span class="set-con-middle">
+					<span id="UdpSwitch" class="switch">
+						<i class="switch-circle"></i>
+					</span>
+				</span>
+			</li>
+		</ul>
+		<ul id="UdpFloodSet" class="set-con">
+			<li class="text-con text-con-b">
+				<span class="safe-unit">{%label.valueUnit%}</span>
+				<label class="desc-lbl">{%label.udpFloodVal%}</label>
+				<input id="UdpFlood" class="text hover ime-mode-n text-length" maxLength="4" value="" />
+			</li>
+		</ul>
+		<ul class="set-con">
+			<li class="text-con">
+				<label class="desc-lbl">{%label.tcpFloodAttack%}</label>
+				<span class="set-con-middle">
+					<span id="TcpSwitch" class="switch">
+						<i class="switch-circle"></i>
+					</span>
+				</span>
+			</li>
+		</ul>
+		<ul id="TcpFloodSet" class="set-con">
+			<li class="text-con text-con-b">
+				<span class="safe-unit">{%label.valueUnit%}</span>
+				<label class="desc-lbl">{%label.tcpFloodVal%}</label>
+				<input id="TcpFlood" class="text hover ime-mode-n text-length" maxLength="4" value="" />
+			</li>
+		</ul>
+		<ul class="set-con">
+			<li class="text-con">
+				<label class="desc-lbl">{%label.disablePing%}</label>
+				<span class="set-con-middle">
+					<span id="PingSwitch" class="switch">
+						<i class="switch-circle"></i>
+					</span>
+				</span>
+			</li>
+		</ul>
+	</div>
+	<ul class="set-con ul-border" id="Border"></ul>
+	<ul class="set-con">
+		<li class="text-con">
+			<label class="desc-lbl title-bold">{%label.arpDefence%}</label>
+			<span class="set-con-middle">
+				<span id="ArpDefenceSwitch" class="switch">
+					<i class="switch-circle"></i>
+				</span>
+			</span>
+		</li>
+	</ul>
+	<div id="ArpDefence">
+		<ul class="set-con">
+			<li class="text-con">
+				<label class="desc-lbl">{%label.arpFloodAttack%}</label>
+				<span class="set-con-middle">
+					<span id="ArpFloodSwitch" class="switch">
+						<i class="switch-circle"></i>
+					</span>
+				</span>
+			</li>
+		</ul>
+		<ul id="ArpFloodSet" class="set-con">
+			<li class="text-con text-con-b">
+				<span class="safe-unit">{%label.valueUnit1%}</span>
+				<label class="desc-lbl">{%label.arpFloodVal%}</label>
+				<input id="ArpThreshold" class="text hover ime-mode-n text-length" maxLength="4" value="" />
+			</li>
+		</ul>
+		<ul class="set-con">
+			<li class="text-con">
+				<label class="desc-lbl">{%label.arpCheating%}</label>
+				<span class="set-con-middle">
+					<span id="ArpCheatingSwitch" class="switch">
+						<i class="switch-circle"></i>
+					</span>
+				</span>
+			</li>
+		</ul>
+		<ul id="ArpCheatingSet" class="set-con">
+			<li class="text-con text-con-b">
+				<span class="safe-unit">{%label.valueUnit2%}</span>
+				<label class="desc-lbl">{%label.arpInterval%}</label>
+				<input id="ArpInterval" class="text hover ime-mode-n text-length" maxLength="4" value="" />
+			</li>
+		</ul>
+	</div>
+	<div class="err-note hidden">
+		<i class="err-icon icon_remind_line"></i>
+		<p class="note-str"></p>
+	</div>
+	<div class="btn-con">
+		<input id="Save" class="btn" type="button" value="{%btn.save%}" />
+	</div>
+	<div id="ArpBlockTab" class="tab-con">
+		<table id="BlockTable" class="set-con">
+			<caption class="table-caption">{%label.arpBlockList%}</caption>
+			<tr class="boder-tr">
+				<th class="set-con-long">{%label.deviceName%}</th>
+				<th class="set-con-long">{%label.arpAttackIp%}</th>
+				<th class="set-con-long">{%label.arpAttackMac%}</th>
+				<th class="set-con-short">{%label.allowInternet%}</th>
+			</tr>
+		</table>
+		<ul class="add-item">
+			<span class="all-move color-orange" id="OnekeyDelete">{%label.onekeyDelete%}</span>
+		</ul>
+	</div>
+	<div id="ArpBindingTab" class="tab-con">
+		<table id="BindTable" class="set-con">
+			<caption class="table-caption">{%label.arpBindList%}</caption>
+			<tr class="boder-tr">
+				<th class="set-con-long">{%label.deviceName%}</th>
+				<th class="set-con-long">{%label.ipaddr%}</th>
+				<th class="set-con-long">{%label.macAddr%}</th>
+				<th class="set-con-short">{%label.handle%}</th>
+			</tr>
+		</table>
+	</div>
+</div>

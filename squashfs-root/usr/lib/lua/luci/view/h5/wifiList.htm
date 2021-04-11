@@ -1,0 +1,185 @@
+<style type="text/css">div.device-list{background-color:#FFF}li.list-item{font-size:0;height:1.6rem;overflow:hidden}div.left-con{float:left}i.verdor-icon{font-size:1.4rem;display:inline-block;height:1.6rem;line-height:1.6rem}div.right-con{float:right;width:80%;height:1.58rem;border-bottom:1px solid #DDD}p.list-con-l{font-size:0;float:left;margin-top:.3rem;width:5rem}p.list-con-r{color:#949494;font-size:.4rem;float:right;max-width:2rem;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}span.list-con1{color:#575757;font-size:.347rem;display:inline-block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;width:5rem}span.self{margin-right:.2rem;font-size:.289rem;color:#2a2c32;vertical-align:top;margin-top:.6rem;display:inline-block}span.list-con1::after{content:"\A";white-space:pre}span.list-con2{color:#949494;font-size:.293rem;margin-top:-0.15rem}span.speed-con{display:inline-block;width:2.5rem}span.speed-con i{margin-left:-0.3rem}.icon_speed_up{color:#1499e6;font-size:1rem}.icon_speed{color:#1fb66f;font-size:1rem}span.mac{margin-left:.2rem}span.switch{font-size:0;margin-top:.5rem}span.speed-tip{display:inline-block;position:absolute;margin-top:.35rem;margin-left:-0.2rem}ul.list{padding:0 .307rem}div.close-bg{background-color:#FFF;text-align:center}i.router{display:inline-block;background:url(/luci-static/images/device_empty.png?_=20180420151033) no-repeat;background-size:100% 100%;width:6.28rem;height:2.813rem;margin-top:4.054rem}p.close-tip{font-size:.32rem;color:#919395;text-align:center;margin-top:.787rem}</style>
+<script type="text/javascript">
+(function(){
+	<%
+		local para = {
+			device_manage = {client_list = {}}
+		}
+		local result = tpl_get_data(para, true)
+		local remote_ip = luci.http.getenv("REMOTE_ADDR")
+	-%>
+
+	var info = <%=result%>;
+	var curIp = "<%=remote_ip%>";
+
+	var clients = info[K_MODULE].device_manage.client_list;
+	var deviceBand = sessionLS.getItem("band");
+
+	function initDeviceName(){
+		var code = parseInt(deviceBand, 10);
+		switch(code){
+		case 0:
+			$("#WifiName").text(label.wifiName);
+			break;
+		case 1:
+			$("#WifiName").text(label.wifi2G);
+			break;
+		case 2:
+			$("#WifiName").text(label.wifi5G);
+			break;
+		case 3:
+			$("#WifiName").text(label.visWifi);
+			break;
+		default:
+			break;
+		}
+	}
+
+	function refreshStatus(){
+		var data = {
+			device_manage:{client_list:null}
+		};
+
+		apiGet(data, function(result){
+			var errNo = result[ERR_CODE];
+
+			if (E_NONE == errNo){
+				ret = result[K_MODULE];
+				clients = ret.device_manage.client_list;
+				initList(clients);
+			}else{
+				console.log(result);
+			}
+
+			$.setTimeout(refreshStatus, 2000);
+		});
+	}
+
+	function initOnlineEntry(client, idx){
+		var vendor;
+		if(client.brand){
+			vendor = "icon_" + getAlias(client.brand);
+		}else{
+			vendor = "icon_" + getVendor(client.mac);
+		}
+		var devName = htmlEscape(getStrInMax(client.name, 18));
+		if (0 <= parseInt(client.upload_speed) && 0 <= parseInt(client.download_speed)) {
+			var uRate = netSpeedTrans(client.upload_speed);
+			var dRate = netSpeedTrans(client.download_speed);
+		} else {
+			var uRate = "----";
+			var dRate = "----";
+		}
+
+		var switchButton = "";
+
+		if (client.ip == curIp){
+			devName += '<span></span>';
+			switchButton += '<span class="self">{%label.selfHost%}</span>';
+		}else{
+			switchButton += '<span class="switch internet-switch" data-index="' + idx +'"><i class="switch-circle"></i></span>';
+		}
+
+		return '<a class="list-item"><li class="list-item">' +
+			'<div class="left-con"><i class="verdor-icon ' + vendor + '"></i></div>' +
+			'<div class="right-con">' +
+				'<p class="list-con-l">' +
+					'<span class="list-con1">' + devName + '</span>'+
+					'<span class="list-con2 speed-con"><i class="icon_speed_up"></i><span class="speed-tip">' + uRate + '</span></span>' +
+					'<span class="list-con2 speed-con"><i class="icon_speed"></i><span class="speed-tip">' + dRate + '</span></span>' +
+				'</p>' +
+				'<p class="list-con-r">' + switchButton + '</p>' +
+			'</div>' +
+		'</li></a>';
+	}
+
+	function initList(clients){
+		var len = clients.length;
+		var ListObj = $("#onlineList");
+		ListObj.empty();
+		$("#ListNull").show();
+
+		for (var i = 0; i < len; i++){
+			if (1== clients[i].online_status){
+				if (0 == deviceBand){
+					if (1 == clients[i].device_type || 2 == clients[i].device_type){
+						ListObj.append(initOnlineEntry(clients[i], i));
+						$("#onlineList").show();
+						$("#ListNull").hide();
+					}
+				}else{
+					if (deviceBand == clients[i].device_type){
+						ListObj.append(initOnlineEntry(clients[i], i));
+						$("#onlineList").show();
+						$("#ListNull").hide();
+					}
+				}
+			}
+		}
+
+		initSwitchList("span.internet-switch", onNetSwitchClick);
+	}
+
+	function initSwitchList(filter, callback){
+		$(filter).each(function(){
+			var idx = parseInt($(this).attr("data-index"), 10);
+			var state = clients[idx].internet_enable;
+			if (1 == state){
+				$(this).attr("data-value", "1").css({textAlign: "right", backgroundColor: "#FE9818", border: "2px solid #FE9818"});
+			}else{
+				$(this).attr("data-value", "0").css({textAlign: "left", backgroundColor: "#B2B2B2", border: "2px solid #B2B2B2"});
+			}
+		}).click(function(){
+			var idx = parseInt($(this).attr("data-index"), 10);
+			var state = $(this).attr("data-value");
+
+			if (0 == state){
+				$(this).attr("data-value", "1").css({textAlign: "right", backgroundColor: "#FE9818", border: "2px solid #FE9818"});
+				callback && callback(1, idx);
+			}else{
+				$(this).attr("data-value", "0").css({textAlign: "left", backgroundColor: "#B2B2B2", border: "2px solid #B2B2B2"});
+				callback && callback(0, idx);
+			}
+		});
+	}
+
+	function onNetSwitchClick(val, idx){
+		var data = {};
+		var para = {};
+		para.device_manage = {};
+		para.device_manage.client_list = data;
+		data.mac = clients[idx].mac;
+		data.ip = clients[idx].ip;
+		data.internet_enable = val;
+		data.name = clients[idx].name;
+		data.upload_limit = clients[idx].upload_limit;
+		data.download_limit = clients[idx].download_limit;
+
+		showLoading(label.saving);
+		apiSet(para, function(ret){
+			$.setTimeout(function(){
+				closeLoading();
+			}, 3000);
+		});
+	}
+
+	initDeviceName();
+	initList(clients);
+	refreshStatus();
+})();
+</script>
+<div class="head-con">
+	<a href="#/phone.netState/?keyBack=1" class="head-btn-l"><i class="head-btn icon icon_back"></i></a>
+	<h1 class="head-title">{%label.deviceList%}</h1>
+</div>
+<div class="device-list below-head">
+	<ul class="blank-bg"></ul>
+	<ul class="set-con-title" id="OnlineTitle">
+		<label class="title-desc-lbl" id="WifiName">{%label.deviceList%}</label>
+	</ul>
+	<ul id="onlineList" class="list"></ul>
+	<div id="ListNull" class="close-bg">
+		<i class="router"></i>
+		<p class="close-tip">{%label.noOnline%}</p>
+	</div>
+</div>

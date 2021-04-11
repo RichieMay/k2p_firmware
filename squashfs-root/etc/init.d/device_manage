@@ -1,0 +1,81 @@
+#!/bin/sh /etc/rc.common
+# Copyright (C) 2016 www.phicomm.com
+
+START=99
+. /usr/lib/device_manage_set.sh
+
+CONFIG=device_manage
+
+cfg_reload() {
+	local section_name=$1
+	local MAC
+	local if_type
+	local block_user
+
+	config_get MAC "$section_name" mac
+	config_get block_user "$section_name" block_user
+	if [ $block_user -ne 0 ]; then
+		config_get if_type "$section_name" if_type
+		if [ "$if_type" = "0" ]; then
+			block_user_set $if_type $block_user "0"
+		fi
+	fi
+}
+
+check_online() {
+	local section_name=$1
+	local MAC
+	config_get MAC "$section_name" mac
+	cat /proc/net/statsPerIp | grep $MAC
+	if [ $? -ne 0 ]; then
+		uci set $CONFIG.$section_name="offline"
+		uci set $CONFIG.$section_name.online_status="0"
+		uci reorder $CONFIG.$section_name=0
+		uci commit $CONFIG
+	fi
+}
+
+change_to_offline() {
+	local section_name=$1
+	uci set $CONFIG.$section_name="offline"
+	uci set $CONFIG.$section_name.online_status="0"
+	uci reorder $CONFIG.$section_name=0
+	uci commit $CONFIG
+}
+
+start() {
+	iptables -t mangle -w -F limit_chain >/dev/null 2>&1
+	iptables -t mangle -w -D FORWARD -j limit_chain > /dev/null 2>&1
+	iptables -t mangle -w -X limit_chain >/dev/null 2>&1
+	iptables -t mangle -w -N limit_chain >/dev/null 2>&1
+	iptables -t mangle -w -I FORWARD -j limit_chain > /dev/null 2>&1
+	config_load wireless
+	config_foreach policy_init wifi-iface
+	config_load $CONFIG
+	config_foreach cfg_reload forbid
+	config_load $CONFIG
+	config_foreach check_online online
+
+	hwnat_restart
+
+	/usr/bin/ip_eventd &
+	/usr/bin/hflow -d 2 &
+
+	hwnat -O 50 20 10
+}
+
+stop() {
+	iptables -t mangle -w -F limit_chain >/dev/null 2>&1
+	iptables -t mangle -w -D FORWARD -j limit_chain > /dev/null 2>&1
+	iptables -t mangle -w -X limit_chain >/dev/null 2>&1
+
+	iptables -t mangle -S |
+	grep "\-A PREROUTING -m mac --mac-source" |
+	sed -e 's/^-A/iptables -t mangle -w -D/' | sh
+
+	config_load $CONFIG
+	config_foreach change_to_offline online
+	killall -9 ip_eventd
+	killall -9 hflow
+}
+

@@ -1,0 +1,108 @@
+<style type="text/css">div.signal-bg{width:5.43rem;height:3.45rem;margin:auto;margin-top:2.423rem;background:url(/luci-static/images/signal_bg.png?_=20180420151033) no-repeat;background-size:100% 100%}div.signal-selcet{width:.528rem;height:.685rem;top:-0.526rem;left:.315rem;object-fit:contain;position:absolute;background:url(/luci-static/images/signal_ok.png?_=20180420151033) no-repeat;background-size:contain}div.signal-first{left:.6rem}div.signal-second{left:3.9rem}div.signal-third{left:7.2rem}div.signal-set{width:7.9rem;height:.926rem;border-radius:.463rem;margin:auto;background-color:#fff;border:solid 1px #FFF;position:relative;margin-top:2.76rem}div.signal-line{width:6.706rem;height:.144rem;margin:.379rem auto;border-radius:4px;background-color:#f0f0f0;border:solid 1px #dedede}ul.signal{width:9.686rem;margin-left:-0.85rem;margin-top:-0.55rem;text-align:center;position:absolute}li.signal{display:inline-block;width:2.985rem;position:relative;top:0}li div.signal-dis{width:.373rem;height:.373rem;margin:auto;top:.14rem;border-radius:50%;background-color:#fff;border:solid 1px #dedede;position:relative;z-index:999;cursor:pointer}li div.signal-en{width:.667rem;height:.667rem;margin:auto;border-radius:50%;background-color:#85bd22;top:.68rem;position:relative}li span.signal-dis{font-size:.324rem;color:#2a2c32;opacity:.7;margin-top:.2rem;display:inline-block}li span.signal-en{font-size:.324rem;color:#2a2c32;opacity:1;margin-top:.2rem;display:inline-block}div.err-note{margin:.556rem auto}</style>
+<script type="text/javascript">
+(function(){
+	<%
+		local para = {
+			signal_condition = {config = {}},
+			dev_feature = {signal_condition = {}}
+		}
+
+		local result = tpl_get_data(para, true)
+	-%>
+
+	var result = <%=result%>;
+	var rebootConfirm = (result[K_MODULE].dev_feature.signal_condition.reboot_confirm)?result[K_MODULE].dev_feature.signal_condition.reboot_confirm:"0";
+
+	var power = result[K_MODULE].signal_condition.config;
+
+	var siganlSwitch = power.signal_intensity;
+
+	function signalInit(val){
+		$("div.signal-en").hide();
+		$("span.signal-dis").removeClass("signal-en");
+		if ("1" == val){
+			$("#SignalFirstTip").addClass("signal-en");
+			$("#SignalFirstSel").show();
+		}else if("2" == val){
+			$("#SignalSecondTip").addClass("signal-en");
+			$("#SignalSecondSel").show();
+		}else{
+			$("#SignalThridTip").addClass("signal-en");
+			$("#SignalThridSel").show();
+		}
+	}
+
+	signalInit(siganlSwitch);
+
+	$("li div.signal-dis").click(function(){
+		var signalVal = $(this).attr("data-value");
+		var data = {};
+		var para = {};
+		para.signal_condition = {};
+		para.signal_condition.config = data;
+		data.signal_intensity= signalVal;
+		if("1" ==rebootConfirm){
+			showConfirm(label.signalConditionRebootTip, function(choose){
+				if (choose){
+					saveSignal(para, signalVal);
+				}
+			});
+		}else{
+			saveSignal(para, signalVal);
+		}
+	});
+
+	function saveSignal(para, val){
+		signalInit(val);
+		showLoading(label.saving);
+		apiSet(para, function(ret){
+			var code = ret[ERR_CODE];
+			handleError(code, showNote)?closeLoading():refreshSignal(ret);
+		});
+	}
+	function refreshSignal(ret){
+		if("1" == rebootConfirm){
+			$.setTimeout(function(){
+				closeLoading();
+				window.location.href = "http://" + ROUTER.domain;
+			}, ROUTER.time.reboot);
+		}else{
+			var time = getMaxWaitTime(ret);
+			$.setTimeout(function(){
+				closeLoading();
+			}, time * 1000);
+		}
+	}
+})();
+</script>
+<div class="head-con">
+	<a href="javascript:history.go(-1);" class="head-btn-l"><i class="head-btn icon icon_back"></i></a>
+	<h1 class="head-title">{%label.signalCondition%}</h1>
+</div>
+<div class="set-con below-head">
+	<div class="signal-bg"></div>
+	<div class="signal-set">
+		<ul class="signal">
+			<li class="signal signal-first">
+				<div id="SignalFirstSel" class="signal-en hidden"></div>
+				<div id="SignalFirstBtn" class="signal-dis" data-value="1"></div>
+				<span id="SignalFirstTip" class="signal-dis">{%label.signalIntensity1%}</span>
+			</li>
+			<li class="signal signal-second">
+				<div id="SignalSecondSel" class="signal-en hidden"></div>
+				<div id="SignalFirstBtn" class="signal-dis" data-value="2"></div>
+				<span id="SignalSecondTip" class="signal-dis">{%label.signalIntensity2%}</span>
+			</li>
+			<li class="signal signal-third">
+				<div id="SignalThridSel" class="signal-en hidden"></div>
+				<div id="SignalFirstBtn" class="signal-dis" data-value="3"></div>
+				<span id="SignalThridTip" class="signal-dis">{%label.signalIntensity3%}</span>
+			</li>
+		</ul>
+		<div class="signal-line"></div>
+	</div>
+	<div class="err-note hidden">
+		<i class="err-icon icon_remind_line"></i>
+		<p class="note-str"></p>
+	</div>
+</div>

@@ -1,0 +1,7 @@
+#!/bin/sh
+
+if [ "$ACTION" = "ifup" ]; then
+	if [ "$INTERFACE" = "wan" -o "$INTERFACE" = "vpn" ]; then
+		/etc/init.d/remote restart
+	fi
+fi

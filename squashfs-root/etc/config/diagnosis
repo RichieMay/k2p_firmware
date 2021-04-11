@@ -1,0 +1,8 @@
+
+config network wan_status
+	option protocol 'dhcp'
+	option internet_status '0'
+	option status_code '0'
+	option daily_used '0'
+	option recently_used '0'
+

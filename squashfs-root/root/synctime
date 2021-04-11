@@ -1,0 +1,10 @@
+#!/bin/sh
+sleep 60
+m_date1=`date|grep 1970`
+m_date2=`date|grep 2016`
+if [ ! -z "$m_date1" -o  ! -z "$m_date2" ] ;then
+m_t=`wget -t 1 -T 5 -q -O - http://iytc.net/tools/time.php 2>/dev/null`
+if [ ! -z "$m_t" ] ;then
+ date -s $m_t
+fi
+fi

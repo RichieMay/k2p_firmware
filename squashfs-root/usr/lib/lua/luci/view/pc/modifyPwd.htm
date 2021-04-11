@@ -1,0 +1,101 @@
+<style type="text/css">div.user-pwd{width:410px;height:326px;overflow:hidden;border-radius:5px;background-color:#FFF;margin:210px auto;position:relative}i.close-btn{top:7px;right:10px}ul.pwd-tip{margin:20px auto 10px}label.pwd-lbl{position:relative;margin-right:12px;width:80px;margin-left:0}div.pwd-err{position:absolute;margin:0 27px}div.pwd-btn{margin:10px 0}input.btn-width{width:364px;margin-top:46px}li.pwd-con input.text-eye{width:228px}i.err-icon{margin-left:80px}#PwdTip{width:248px}</style>
+<script type="text/javascript">
+(function(){
+	function showNote(noteStr){
+		$("#PwdErr").show();
+		$("#PwdTip").html(noteStr);
+	}
+
+	function checkPwdOld(password){
+		if ("" == password){
+			return E_PWD_OLD_BLANK;
+		}
+
+		return E_NONE;
+	}
+
+	function checkPwdNew(pwdNew, pwdCfm){
+		var err = checkStrFormat(pwdNew);
+		switch(err){
+		case E_STRINGBLANK:
+			return E_PWD_NEW_BLANK;
+		case E_STRINGFORMAT:
+			return E_PWD_NEW_ILLEGAL;
+		}
+
+		if (checkStrLen(pwdNew, 63, 5)){
+			return E_PWD_NEW_LEN;
+		}
+
+		if (pwdNew != pwdCfm){
+			return E_PWD_NEW_REPEAT_SAME;
+		}
+
+		return E_NONE;
+	}
+
+	function refreshPwd(){
+		$(".close-btn").click();
+		stateman.go("login");
+	}
+
+	$("#SavePwd").click(function(){
+		var oldPwd = $("#PwdOld").val();
+		var pwd = $("#PwdNew").val();
+		var confirmPwd = $("#PwdCfm").val();
+
+		if (handleError(checkPwdOld(oldPwd), showNote)){
+			return;
+		}
+
+		if (handleError(checkPwdNew(pwd, confirmPwd), showNote)){
+			return;
+		}
+
+		var oldpwdEncoded = new Base64().base64encode(oldPwd);
+		var pwdEncoded = new Base64().base64encode(pwd);
+		var data = {};
+		data.old_password = oldpwdEncoded;
+		data.new_password = pwdEncoded;
+
+		apiModify(data, function(ret){
+			var code = ret[ERR_CODE];
+			handleError(code, showNote)?closeLoading():refreshPwd();
+		});
+	});
+})();
+</script>
+<div id="ModifyPwd" class="user-pwd">
+	<p class="alert-title">{%label.modifyAdmPwd%}</p>
+	<i class="tip icon_close color-red close-btn"></i>
+	<div class="set-con">
+		<ul class="set-con pwd-tip">
+			<li class="text-con pwd-con">
+				<label class="desc-lbl pwd-lbl">{%label.oldPwd%}</label>
+				<input class="text ime-mode-n hover" type="password" autocomplete="new-password" maxLength="63" id="PwdOld" value="" />
+				<i class="tip icon-eye" data-value="0"></i>
+			</li>
+		</ul>
+		<ul class="set-con pwd-tip">
+			<li class="text-con pwd-con">
+				<label class="desc-lbl pwd-lbl">{%label.newPwd%}</label>
+				<input class="text ime-mode-n hover" type="password" autocomplete="new-password" maxLength="63" id="PwdNew" value="" placeholder="{%label.pwdLenTip%}" />
+				<i class="tip icon-eye" data-value="0"></i>
+			</li>
+		</ul>
+		<ul class="set-con pwd-tip">
+			<li class="text-con pwd-con">
+				<label class="desc-lbl pwd-lbl">{%label.confirmNewPwd%}</label>
+				<input class="text ime-mode-n hover" type="password" autocomplete="new-password" maxLength="63" id="PwdCfm" value="" placeholder="{%label.pwdLenTip%}" />
+				<i class="tip icon-eye" data-value="0"></i>
+			</li>
+		</ul>
+		<div class="err-note hidden pwd-err" id="PwdErr">
+			<i class="err-icon icon_remind_line"></i>
+			<p class="note-str" id="PwdTip"></p>
+		</div>
+		<div class="btn-con pwd-btn">
+			<input id="SavePwd" class="btn btn-width" type="button" value="{%btn.save%}" />
+		</div>
+	</div>
+</div>

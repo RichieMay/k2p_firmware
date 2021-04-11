@@ -1,0 +1,5 @@
+/usr/sbin/ccgame_daemon.lua
+/usr/lib/lua/ccgame/ccgame_util.lua
+/etc/init.d/ccgame
+/etc/uci-defaults/99-ccgame
+/etc/config/ccgame

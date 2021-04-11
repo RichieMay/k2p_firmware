@@ -1,0 +1,178 @@
+<script type="text/javascript">
+(function(){
+	<%
+		local para = {
+			network = {lan = {}},
+			dev_feature = {lan_set = {}}
+		}
+
+		local result = tpl_get_data(para)
+		local lan = result[K_MODULE].network.lan
+		local reboot_confirm = result[K_MODULE].dev_feature.lan_set.reboot_confirm
+	-%>
+
+	var ip = '<%=lan.ip%>';
+	var netmask = '<%=lan.netmask%>';
+	var gateway = '<%=lan.gateway%>';
+	var dnsip = '<%=lan.dnsip%>';
+	var reboot_confirm = <%=reboot_confirm%>;
+
+	$("#LanIp").val(ip);
+	$("#LanMask").val(netmask);
+	$("#Gateway").val(gateway);
+	$("#DnsIp").val(dnsip);
+
+	function checkLanIp(ip){
+		var err = checkIp(ip);
+		switch(err){
+		case E_BLANK:
+			return E_LAN_IP_BLANK;
+		case E_INVIPFMT:
+			return E_LAN_IP_FORMAT;
+		case E_INVIP:
+			return E_LAN_IP_ILLEGAL;
+		}
+		return E_NONE;
+	}
+
+	function checkLanMask(mask){
+		var err = checkMask(mask);
+		switch(err){
+		case E_BLANK:
+			return E_LAN_NETMASK_BLANK;
+		case E_INVMASKFMT:
+			return E_LAN_NETMASK_FORMAT;
+		case E_INVMASK:
+			return E_LAN_NETMASK_ILLEGAL;
+		}
+		return E_NONE;
+	}
+
+	function checkLanIpMask(ip, mask) {
+		var err = checkIpMask(ip, mask);
+
+		switch(err){
+		case E_INVNETID:
+			return E_LAN_NET_ILLEGAL;
+		case E_INVHOSTID:
+			return E_LAN_NETHOST_ILLEGAL;
+		}
+		return E_NONE;
+	}
+
+	$("#Save").click(function(){
+		var data = {};
+		var para = {};
+		para.network = {};
+		para.network.lan = data;
+
+		data.ip = $("#LanIp").val();
+		data.netmask = $("#LanMask").val();
+		data.dnsip = $("#DnsIp").val();
+		data.gateway = $("#Gateway").val();
+
+		if (handleError(checkLanIp(data.ip))){
+			return;
+		}
+
+		if (handleError(checkLanMask(data.netmask))){
+			return;
+		}
+
+		if (handleError(checkLanIpMask(data.ip, data.netmask))){
+			return;
+		}
+		if(reboot_confirm){
+			showConfirm(label.lanSetTip, function(choose){
+				if (choose){
+					saveLan(para);
+				}
+			});
+		}else{
+			saveLan(para);
+		}
+	});
+
+	function saveLan(para){
+		showLoading(label.saving);
+		apiSet(para, function(ret){
+			var code = ret[ERR_CODE];
+			handleError(code, showNote)?closeLoading():refreshLan(ret);
+		});
+	}
+
+	function refreshLan(ret){
+		if(reboot_confirm){
+			showProgressBar(label.lanSet, label.rebooting, ROUTER.time.reboot, function(){
+				window.location.href = "http://" + $("#LanIp").val();
+			});
+			$.setTimeout(function(){
+				// 检测LAN是否可以连接DUT
+				lanDetecting(function(){
+					window.location.href = "http://" + $("#LanIp").val();
+				});
+			}, ROUTER.time.detectDelay);
+		}else{
+			var time = ret[K_MODULE].network.lan.wait_time;
+			$.setTimeout(function(){
+				closeLoading();
+				window.location.href = "http://" + $("#LanIp").val();
+			}, time * 1000);
+		}
+	}
+})();
+</script>
+<div class="help hidden">
+	<ul class="help-content">
+		<li class="help-head">
+			<img class="app-icon" src="/luci-static/images/app-icon/lan.png?_=20170822124504" />
+			<span class="help-title">{%label.lanSet%}</span>
+		</li>
+		<div id="HelpLanSet">
+		</div>
+
+	</ul>
+</div>
+<div class="head-con">
+	<img class="app-icon" src="/luci-static/images/app-icon/lan.png?_=20170822124504" />
+	<a href="javascript:history.go(-1);" class="head-btn-l">
+		<i class="head-btn icon icon_back"></i>
+		<span class="head-title">{%label.lanSet%}</span>
+	</a>
+</div>
+<div class="set-con below-head">
+	<ul class="set-con">
+		<li class="text-con">
+			<label class="desc-lbl">{%label.ipaddr%}</label>
+			<input id="LanIp" class="text hover" maxLength="15" value="" />
+		</li>
+	</ul>
+	<ul class="set-con">
+		<li class="text-con">
+			<label class="desc-lbl">{%label.netmask%}</label>
+			<input id="LanMask" class="text hover" maxLength="15" value="" />
+		</li>
+	</ul>
+	<ul class="set-con">
+		<li class="text-con">
+			<label class="desc-lbl">网关</label>
+			<input id="Gateway" class="text hover" maxLength="15" value="" />
+		</li>
+	</ul>
+	<ul class="set-con">
+		<li class="text-con">
+			<label class="desc-lbl">DNS</label>
+			<input id="DnsIp" class="text hover" maxLength="15" value="" />
+		</li>
+	</ul>
+	<div class="err-note hidden">
+		<i class="err-icon icon_remind_line"></i>
+		<p class="note-str"></p>
+	</div>
+<div  style="width:256px;margin:9px auto">
+<p class="note-str price-remark" style="color:black;width:auto;margin-top:26px;">LAN网关和DNS仅在AP模式下才需设置</p>
+</div>
+	<div class="btn-con">
+		<input id="Save" class="btn" type="button" value="{%btn.save%}" />
+	</div>
+</div>

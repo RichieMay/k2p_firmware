@@ -1,0 +1,379 @@
+<style type="text/css">div.url-set{position:absolute;left:0;right:0;top:0;bottom:0;width:600px;max-height:600px;overflow:hidden;border-radius:5px;background-color:#FFF;margin:auto}div.url-set-body{position:absolute;max-height:82%}i.close-btn{top:7px;right:10px}div.common-url{font-size:14px;color:#3f4044;margin:21px 20px 21px 35px}p.url-head{margin-top:15px;text-align:left}div.url-head{float:left;width:74px;text-align:left}div.state-icon{float:left;margin-top:2px;margin-right:8px;font-size:24px;line-height:17px;text-align:center;color:#bfbfbf;cursor:pointer}div.all-check{color:#ff7800}div.common-url-check{float:left;width:30px;margin-right:9px;text-align:center}.common-url-body{float:left;width:385px;text-align:left;margin-left:7px;line-height:45px;margin-top:-13px}div.head-color{color:#ff7800}div.url-block{display:inline-block;margin-top:15px}span.url-item{height:auto;line-height:35px;display:inline-block;position:relative;padding:0 10px;margin:0 4px;border:.5px solid #DDD;cursor:pointer}span.url-item-checked{border:.5px solid #ff7800}span.checked-style{position:absolute;right:-0.5px;bottom:-0.5px;border-bottom:8px solid #ff7800;border-left:8px solid transparent}div.custom-url{border-top:1px solid #DDD;font-size:14px;color:#3f4044;margin:19px 20px 19px 35px}input.custom-url-input{border:0;width:545px;height:50px;font-size:14px;text-align:left;margin-top:7px;color:#3f4044;border-bottom:1px solid #ff7800}div.set-btn{margin:0;position:absolute;bottom:0;left:0;right:0}input.btn-width{width:120px;margin-left:0;margin-top:10px}input.btn-width-right{margin-left:9px}div.url-err{margin-left:35px;text-align:left}i.url-err-icon{margin-left:0}p.err-length{width:450px}</style>
+<script type="text/javascript">
+(function(){
+	<%
+		local para = {
+			url_block = {url_list = {}},
+			dev_feature = {url_block = {}}
+		}
+
+		local result = tpl_get_data(para, true)
+	-%>
+
+	var itemId = sessionLS.getItem("urlBlockItemId");
+	var itemMac = sessionLS.getItem("urlBlockItemMac");
+	var itemName = sessionLS.getItem("urlBlockItemName");
+
+	var urlBlockInfo = <%=result%>;
+	var urlList = urlBlockInfo[K_MODULE].url_block.url_list;
+	var blockUrl = [];
+
+	var extraUrl = ["video.qq", "film.qq", "film.sohu", "v.sohu", "video.baidu"];
+	var flag = 0;
+
+	var shoppingUrlAll = [{name:label.taobao, value:"taobao"},
+			   {name:label.tmall, value:"tmall"},
+			   {name:label.yhd, value:"yhd"},
+			   {name:label.vip, value:"vip"},
+			   {name:label.jd, value:"jd"},
+			   {name:label.dangdang, value:"dangdang"},
+			   {name:label.amazon, value:"amazon"},
+			   {name:label.suning, value:"suning"},
+			   {name:label.gome, value:"gome"},
+			   {name:label.jumei, value:"jumei"},
+			   {name:label.ebay, value:"ebay"},
+			   {name:label.macys, value:"macys"}];
+
+	var mediaUrlAll = [{name:label.youku, value:"youku"},
+			   {name:label.tudou, value:"tudou"},
+			   {name:label.iqiyi, value:"iqiyi"},
+			   {name:label.qqvideo, value:"v.qq"},
+			   {name:label.acfun, value:"acfun"},
+			   {name:label.bilibili, value:"bilibili"},
+			   {name:label.sohu, value:"tv.sohu"},
+			   {name:label.baidu, value:"v.baidu"},
+			   {name:label.leshi, value:"le"},
+			   {name:label.wasu, value:"wasu"},
+			   {name:label.pptv, value:"pptv"},
+			   {name:label.fengxing, value:"fun"},
+			   {name:label.netflix, value:"netflix"},
+			   {name:label.youtube, value:"youtube"},
+			   {name:label.veoh, value:"veoh"}];
+
+	var gameUrlAll = [{name:label.game17137, value:"17173"},
+			   {name:label.ali213, value:"ali213"},
+			   {name:label.game3dm, value:"3dmgame"},
+			   {name:label.gamersky, value:"gamersky"},
+			   {name:label.pcgames, value:"pcgames"},
+			   {name:label.duowan, value:"duowan"},
+			   {name:label.yxdown, value:"yxdown"},
+			   {name:label.game4399, value:"4399"},
+			   {name:label.tgbus, value:"tgbus"},
+			   {name:label.uuu9, value:"uuu9"},
+			   {name:label.ign, value:"ign"},
+			   {name:label.gamefaqs, value:"gamefaqs"},
+			   {name:label.gamespot, value:"gamespot"}];
+
+	var blockUrlInfo = urlBlockInfo[K_MODULE].dev_feature.url_block;
+
+	var shoppingUrl = productSelect(shoppingUrlAll, blockUrlInfo.shopping_url);
+	var mediaUrl = productSelect(mediaUrlAll, blockUrlInfo.media_url);
+	var gameUrl = productSelect(gameUrlAll, blockUrlInfo.game_url);
+
+	function initUrl(url){
+		return '<span class="url-item" data-url="' + url.value + '">' +
+				url.name + '</span>';
+	}
+
+	function initBlockUrl(result){
+		for (var i = 0; i < shoppingUrl.length; i++){
+			$("#ShoppingUrl").append(initUrl(shoppingUrl[i]));
+		}
+
+		for (var i = 0; i < mediaUrl.length; i++){
+			$("#MediaUrl").append(initUrl(mediaUrl[i]));
+		}
+
+		for (var i = 0; i < gameUrl.length; i++){
+			$("#GameUrl").append(initUrl(gameUrl[i]));
+		}
+
+		for(var i = 0; i < result.length; i++){
+			if(result[i].id == itemId){
+				for(var j = 0; j < result[i].block_url.length; j++){
+					for(var m = 0; m < extraUrl.length; m++){
+						if(result[i].block_url[j] == extraUrl[m]){
+							flag = 1;
+							break;
+						}else{
+							flag = 0;
+						}
+					}
+
+					if(flag == 0){
+						blockUrl.push(result[i].block_url[j]);
+					}
+				}
+				break;
+			}
+		}
+
+		$(".url-item").each(function(){
+			for(var i = 0; i < blockUrl.length; i++){
+				var url = $(this).attr("data-url");
+				if(url == blockUrl[i]){
+					$(this).attr("data-value", "1");
+					blockUrl.splice(i, 1);
+					break;
+				}
+			}
+		}).append('<span class="checked-style hidden"></span>');
+
+		allCheck("ShoppingUrl");
+		allCheck("MediaUrl");
+		allCheck("GameUrl");
+		initCheck(".url-item", "url-item-checked");
+		initCheck(".state-icon", "all-check");
+
+		$("#CustomUrl").val(blockUrl.join(";"));
+
+		$("input.hover").bind("focus", function(){
+			closeNote();
+		});
+	}
+
+	initBlockUrl(urlList);
+
+	function allCheck(id){
+		var thisObj = $("#" + id + " .url-item");
+		var len = thisObj.length;
+		var num = 0;
+		thisObj.each(function(){
+			if($(this).attr("data-value") == "1"){
+				num++;
+			}
+		});
+
+		if(len == num){
+			$("#" + id).siblings(".state-icon").attr("data-value", "1").addClass("all-check");
+		}else{
+			$("#" + id).siblings(".state-icon").attr("data-value", "0").removeClass("all-check");
+		}
+	}
+
+	function initCheck(filter, checkedClass, callback){
+		$(filter).each(function(){
+			var state = $(this).attr("data-value");
+			if (1 == state){
+				$(this).attr("data-value", "1").addClass(checkedClass);
+				$(this).children("span.checked-style").show();
+			}else{
+				$(this).attr("data-value", "0").removeClass(checkedClass);
+				$(this).children("span.checked-style").hide();
+			}
+		}).click(function(){
+			var state = $(this).attr("data-value");
+
+			if (0 == state){
+				$(this).attr("data-value", "1").addClass(checkedClass);
+				$(this).children("span.checked-style").show();
+
+				if(checkedClass == "all-check"){
+					$(this).siblings(".common-url-body").find(".url-item").addClass("url-item-checked").attr("data-value", "1");
+					$(this).siblings(".common-url-body").find(".url-item").children("span.checked-style").show();
+				}
+				callback && callback(1, false);
+			}else{
+				$(this).attr("data-value", "0").removeClass(checkedClass);
+				$(this).children("span.checked-style").hide();
+
+				if(checkedClass == "all-check"){
+					$(this).siblings(".common-url-body").find(".url-item").removeClass("url-item-checked").attr("data-value", "0");
+					$(this).siblings(".common-url-body").find(".url-item").children("span.checked-style").hide();
+
+				}
+				callback && callback(0, false);
+			}
+			if(checkedClass == "url-item-checked"){
+				allCheck("ShoppingUrl");
+				allCheck("MediaUrl");
+				allCheck("GameUrl");
+			}
+		});
+	};
+
+	function checkUrlDomain(domain){
+		var reg = /^[a-zA-Z0-9\.\-]+$/;
+		if (!(reg.test(domain))){
+			return E_URLBOLCK_URL_FORMAT;
+		}
+
+		var tokens = domain.split(".");
+		for(var i = 0; i < tokens.length; i++){
+			var urlStr = /^[a-zA-Z0-9]([a-zA-Z0-9]|-[a-zA-Z0-9])*$/;
+			if (tokens[i].length == 0 || tokens[i].length >= 64){
+				return E_URLBOLCK_URL_DOMAIN_FORMAT;
+			}else if (!(urlStr.test(tokens[i]))){
+				return E_URLBOLCK_URL_FORMAT;
+			}
+		}
+
+		return E_NONE;
+	}
+
+	function checkUrlList(array){
+		if(1 > array.length){
+			return E_URLBOLCK_URL_BLANK;
+		}
+
+		return E_NONE;
+	}
+
+	function checkCustomUrlLenth(array){
+		if (array.length > 20){
+			return E_URLBOLCK_CUSTOMURL_LEN;
+		}
+		return E_NONE;
+	}
+
+	function checkCustomUrlCodeLenth(len){
+		var maxLenth = 1024 - (252 + 37 * 3 + 2) - 1;
+		if (len > maxLenth){
+			return E_URLBOLCK_CUSTOMURLCODE_LEN;
+		}
+		return E_NONE;
+	}
+
+	$("#Save").click(function(){
+		var data = {};
+		var para = {};
+
+		para.url_block = {};
+		para.url_block.url_list = data;
+		data.id = itemId;
+		data.name = itemName;
+		data.mac = itemMac;
+
+		var urlData = [];
+		var url = "";
+		$(".url-item").each(function(){
+			if($(this).hasClass("url-item-checked")){
+				url = $(this).attr("data-url");
+				if(url == "v.qq"){
+					urlData.push("video.qq");
+					urlData.push("film.qq");
+				}
+
+				if(url == "tv.sohu"){
+					urlData.push("film.sohu");
+					urlData.push("v.sohu");
+				}
+
+				if(url == "v.baidu"){
+					urlData.push("video.baidu");
+				}
+
+				urlData.push(url);
+			}
+		});
+
+		var inputUrl = $("#CustomUrl").val();
+		inputUrl = inputUrl.toLocaleLowerCase();
+
+		var customUrl = inputUrl.split(";");
+
+		if(customUrl[customUrl.length - 1] == ""){
+			customUrl.pop();
+		}
+
+		if(customUrl[0] != ""){
+			for(var i = 0; i < customUrl.length; i++){
+				customUrl[i] = customUrl[i].replace(/\s+/g,"");
+
+				if (handleError(checkUrlDomain(customUrl[i]))){
+					contentScroll.scrollTo($("#UrlSet")[0].scrollHeight);
+					return;
+				}
+
+				urlData.push(customUrl[i]);
+			}
+		}
+
+		if (handleError(checkUrlList(urlData), showAlert)){
+			return;
+		}
+
+		if (handleError(checkCustomUrlLenth(customUrl))){
+			contentScroll.scrollTo($("#UrlSet")[0].scrollHeight);
+			return;
+		}
+
+		var customUrlCodeLen = 0;
+		for(var j = 0; j < customUrl.length; j++){
+			customUrlCodeLen += customUrl[j].length;
+		}
+
+		if (handleError(checkCustomUrlCodeLenth(customUrlCodeLen + customUrl.length * 3))){
+			contentScroll.scrollTo($("#UrlSet")[0].scrollHeight);
+			return;
+		}
+
+		data.block_url = urlData;
+		showLoading(label.saving);
+
+		apiSet(para, function(ret){
+			var code = ret[ERR_CODE];
+			if (E_NONE == code){
+				$(".close-btn").click();
+				$.setTimeout(function(){
+					closeLoading();
+					stateman.go("pc.urlBlockApp");
+				}, ret[K_MODULE].url_block.url_list.wait_time * 1000);
+			}else{
+				handleError(code);
+				closeLoading();
+			}
+		});
+	});
+
+	$("#Cancel").click(function(){
+		$(".close-btn").click();
+		$.setTimeout(function(){
+			stateman.go("pc.urlBlockApp");
+		}, 500);
+	});
+
+	var contentScroll = new NiceScroll("UrlSet");
+	contentScroll.scrollBarSet({zIndex:1101});
+	contentScroll.init();
+})();
+</script>
+<div class="url-set">
+	<p class="alert-title">{%label.urlSet%}</p>
+	<i class="tip icon_close color-red close-btn hidden"></i>
+	<div class="set-con url-set-body" id="UrlSet">
+		<div class="common-url">
+			<p class="url-head">{%label.commonUrl%}</p>
+			<div class="url-block">
+				<div class="url-head head-color">{%label.shoppingUrl%}</div>
+				<div class="state-icon icon_select_on"></div>
+				<div class="common-url-check">{%label.allCheck%}</div>
+				<div class="common-url-body" id="ShoppingUrl"></div>
+			</div>
+			<div class="url-block">
+				<div class="url-head head-color">{%label.mediaUrl%}</div>
+				<div class="state-icon icon_select_on"></div>
+				<div class="common-url-check">{%label.allCheck%}</div>
+				<div class="common-url-body" id="MediaUrl"></div>
+			</div>
+			<div class="url-block">
+				<div class="url-head head-color">{%label.gameUrl%}</div>
+				<div class="state-icon icon_select_on"></div>
+				<div class="common-url-check">{%label.allCheck%}</div>
+				<div class="common-url-body" id="GameUrl"></div>
+			</div>
+		</div>
+		<div class="custom-url">
+			<p class="url-head">{%label.customUrl%}</p>
+			<input id="CustomUrl" class="custom-url-input hover" placeholder="{%label.customUrlTip%}">
+		</div>
+		<div class="err-note hidden url-err" id="UrlErr">
+			<i class="err-icon icon_remind_line url-err-icon"></i>
+			<p class="note-str err-length" id="UrlErrTip"></p>
+		</div>
+	</div>
+	<div class="btn-con set-btn">
+		<input id="Save" class="btn btn-width" type="button" value="{%btn.save%}" />
+		<input id="Cancel" class="btn btn-width btn-width-right" type="button" value="{%btn.cancel%}" />
+	</div>
+</div>

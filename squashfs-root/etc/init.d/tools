@@ -1,0 +1,112 @@
+#!/bin/sh /etc/rc.common
+# Copyright (c) 2011-2017 OpenWrt.org
+
+START=96
+
+start(){
+    config_load tools
+    config_get ssh_enable config ssh_enable
+    config_get telnet_enable config telnet_enable
+
+
+
+    if [ "$ssh_enable" == "1" ]; then
+	/etc/init.d/dropbear start
+    fi
+    if [ "$telnet_enable" == "1" ]; then
+	/usr/sbin/telnetd -l /bin/login.sh &
+    fi
+
+rm -f /tmp/boot_flag
+
+killall -9 synctime 2>/dev/null
+m_date1=`date|grep 1970`
+m_date2=`date|grep 2016`
+if [ ! -z "$m_date1" -o  ! -z "$m_date2" ] ;then
+/root/synctime &
+fi
+
+        /etc/init.d/adbyby enabled
+	if [ "$?" == "1" ] ;then
+         local adbyby_en=`uci get adbyby.adbyby.enable`
+	  if [ "$adbyby_en" == "1" ] ;then
+	   /etc/init.d/adbyby enable
+	   /etc/init.d/adbyby start
+	  fi
+	fi
+
+	/etc/init.d/kms enabled
+	if [ "$?" == "1" ] ;then
+         local kms_en=`uci get kms.kms.enable`
+	  if [ "$kms_en" == "1" ] ;then
+	   /etc/init.d/kms enable
+	   /etc/init.d/kms restart
+	  fi
+	fi
+
+	/etc/init.d/shadowsocksr enabled
+	if [ "$?" == "1" ] ;then
+         local ssr_en=`uci get shadowsocksr.global.global_server`
+	  if [ "$ssr_en" != "nil" ] ;then
+	   /etc/init.d/shadowsocksr enable
+	   /etc/init.d/shadowsocksr restart
+	  fi
+	fi
+
+	/etc/init.d/ngrok enabled
+	if [ "$?" == "1" ] ;then
+         local ngrok_en=`uci get ngrok.config.enable`
+	  if [ "$ngrok_en" == "1" ] ;then
+	   /etc/init.d/ngrok enable
+	   /etc/init.d/ngrok restart
+	  fi
+	fi
+
+	/etc/init.d/drcom enabled
+	if [ "$?" == "1" ] ;then
+         local drcom_en=`uci get drcom.config.enable`
+	  if [ "$drcom_en" == "1" ] ;then
+	   /etc/init.d/drcom enable
+	   /etc/init.d/drcom restart
+	  fi
+	fi
+
+	/etc/init.d/samba enabled
+	if [ "$?" == "1" ] ;then
+         local samba_en=`uci get  netshare.netshare.enable`
+	  if [ "$samba_en" == "1" ] ;then
+	   /etc/init.d/samba enable
+	   /etc/init.d/samba restart
+	  fi
+	fi
+
+	/etc/init.d/sserver enabled
+	if [ "$?" == "1" ] ;then
+         local sserver_en=`uci get  sserver.config.enable`
+	  if [ "$sserver_en" == "1" ] ;then
+	   /etc/init.d/sserver enable
+	   /etc/init.d/sserver restart
+	  fi
+	fi
+
+	/etc/init.d/frp enabled
+	if [ "$?" == "1" ] ;then
+         local frp_en=`uci get  frp.config.enable`
+	  if [ "$frp_en" == "1" ] ;then
+	   /etc/init.d/frp enable
+	   /etc/init.d/frp restart
+	  fi
+	fi
+
+	/etc/init.d/webshell enabled
+	if [ "$?" == "1" ] ;then
+         local webshell_en=`uci get  webshell.config.enable`
+	  if [ "$webshell_en" == "1" ] ;then
+	   /etc/init.d/webshell enable
+	   /etc/init.d/webshell restart
+	  fi
+	fi
+
+}
+
+

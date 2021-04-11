@@ -1,0 +1,33 @@
+#!/bin/sh /etc/rc.common
+
+######################################################################
+#
+# Function  : init script, lc
+#
+# Creater   : zhenhui.zhang@feixun.com.cn, 2017-06-15
+#
+# Copyright : Shanghai Phicomm
+#
+######################################################################
+
+START=19
+
+boot() {
+    status=$(uci get sleep_timer.timer.lastSleepStatus)
+    if [ ${status} = 1 ]; then
+        mode=$(uci get sleep_timer.timer.oldLedStatus)
+        uci set light_manage.pagelight.ignore=${mode}
+
+        mode=$(uci get sleep_timer.timer.old24gStatus)
+        uci set wireless.@wifi-iface[0].disabled=${mode}
+
+        mode=$(uci get sleep_timer.timer.old5gStatus)
+        uci set wireless.@wifi-iface[3].disabled=${mode}
+
+        mode=$(uci get sleep_timer.timer.oldGuestStatus)
+        uci set wireless.@wifi-iface[1].disabled=${mode}
+
+        uci set sleep_timer.timer.lastSleepStatus="0"
+        uci commit sleep_timer
+    fi
+}

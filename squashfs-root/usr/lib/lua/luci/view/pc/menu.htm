@@ -1,0 +1,262 @@
+<style type="text/css">#Con{background-color:#f8f8f8;overflow:hidden}#Content{position:absolute;margin:auto;left:0;right:0;top:58px;bottom:60px;width:70%;font-size:0;background-color:#FFF;border:1px solid #DDD;overflow:hidden}div.head{background-color:#2a2c32;min-width:980px}div.left-logo span.brand{color:#FFF}ul.menu{font-size:0;margin:auto;text-align:right}li.menu-item{color:#FFF;width:120px;line-height:58px;vertical-align:middle;display:inline-block;text-align:center}a.active li.menu-item{background-color:#ff8000}li.menu-item p{font-size:18px}ul.pop-list{display:none;position:absolute;top:24px;right:0;width:130px;text-align:center;border-style:solid;border-color:#DDD;border-width:1px 1px 0 1px;border-radius:2px;background-color:#FFF;z-index:100}ul.pop-list li.item{cursor:pointer;font-size:14px;line-height:34px;height:34px;color:#515456;border-bottom:1px solid #DDD}ul.pop-list li.item:hover{background-color:#f0f0f0}div.footer{width:100%;min-width:980px;height:60px;position:absolute;z-index:1010;bottom:0;font-size:14px;color:#767d82;background-color:#2a2c32;text-align:center}div.hotline{text-align:left}p.phone-con{margin-top:10px;margin-left:16px}i.phone-img{font-size:20px}span.phone-tip{font-size:16px;line-height:20px;vertical-align:top;margin-left:5px}p.phone-num{font-size:20px;margin-top:4px;margin-left:18px}div.route-info{text-align:left}div.info{position:relative;z-index:100;padding-bottom:20px;padding-top:20px;margin:auto}div.info a{color:#767d82;margin-right:2em}p.copyright{right:27px;position:absolute}div.foot-con{width:100%}#ShowAgreement{left:23px;position:absolute}#DevMac{left:148px;position:absolute}div.bottom-ico{width:32px;height:32px;opacity:.3;background-color:#000;color:#FFF;float:right}div.code-hide{margin-top:-35px}p.code-ico{margin-top:5px}i.code-img{font-size:22px}div.hotline-hide{margin-top:-69px}div.code-show{width:150px;height:150px;margin-top:-154px;margin-right:36px;background-color:#eeeff0;background-size:100%;float:right}div.code-img{width:130px;height:130px;background:url(/luci-static/images/menu_code.png?_=20171121163152);background-size:100%;margin:10px auto}div.hotline-show{width:180px;height:66px;margin-top:-69px;margin-right:36px;color:#FFF;font-size:15px;background-color:#86bd24;float:right}div.mouse-over{opacity:.7;background-color:#2a2c32}</style>
+<script type="text/javascript">
+(function(){
+	function initList(id, list, callback){
+		var target = $("#" + id);
+		var ul = $('<ul class="pop-con pop-list"></ul>').insertAfter(target);
+
+		var len = list.length;
+		for (var i = 0; i < len; i++){
+			$('<li class="item" data-value="' + list[i].value + '">' + list[i].name + '</li>').appendTo(ul);
+		}
+
+		ul.delegate("li", "click", function(){
+			$(this).parent().hide("fast");
+			callback && callback($(this).attr("data-value"));
+		});
+
+		target.click(function(e){
+			$(this).next("ul").toggle("fast");
+			e.stopPropagation();
+		});
+
+		$("body").click(function(e){
+			$(".pop-con").hide("fast");
+			e.stopPropagation();
+		});
+	}
+
+	if (ROUTER.footerType == 1){
+		$("#HotlineIco").hide();
+	}else{
+		$("#HotlineIco").show();
+	}
+
+
+
+
+
+	$("div.code-hide").mouseover(function (){
+		$("div.code-show").show();
+		$("div.code-hide").addClass("mouse-over");
+	}).mouseout(function (){
+		$("div.code-show").hide();
+		$("div.code-hide").removeClass("mouse-over");
+	});
+
+	$("div.hotline-hide").mouseover(function (){
+		$("div.hotline-show").show();
+		$("div.hotline-hide").addClass("mouse-over");
+	}).mouseout(function (){
+		$("div.hotline-show").hide();
+		$("div.hotline-hide").removeClass("mouse-over");
+	});
+
+	var toolList = [{name:btn.reboot, value:0},
+					{name:btn.timeReboot, value:3},
+					{name:label.modifyAdmPwd, value:2},
+					{name:btn.logout, value:1}];
+
+	initList("Tool", toolList, function(val){
+		switch(parseInt(val, 10)){
+		case 0:
+			showConfirm(label.routerReboot, function(choose){
+				if (choose){
+					$.sendAjax('/system/reboot', null, function(){
+						showProgressBar(label.rebootEquipment, label.rebooting, ROUTER.time.reboot, function(){
+							window.location.reload();
+						});
+
+						$.setTimeout(function(){
+							// 检测LAN是否可以连接DUT
+							lanDetecting(function(){
+								window.location.reload();
+							});
+						}, ROUTER.time.detectDelay);
+					});
+				}
+			});
+			break;
+		case 1:
+			logout();
+			break;
+		case 2:
+			showModifyPwd();
+			break;
+		case 3:
+			showTimeReboot();
+			break;
+		default:
+			break;
+		}
+	});
+
+	var contentScroll = new NiceScroll("Content");
+	contentScroll.init();
+
+	function checkUpgrade(){	/* 升级弹窗
+		var para = {
+			system:{upgrade_info:{action:"get"}}
+		};
+
+		tryCheckUpgradeNum++;
+		apiGet(para, function(data){
+			var info = data[K_MODULE]["system"]["upgrade_info"];
+			var status = info.running_status;
+
+			if ("pc.schemeUpgrade" == stateman.current.name){
+				return;		// 已经在策略升级弹窗页面，无需再检测
+			}
+
+			if ("2" == status){	// 升级检查完成
+				if ("1" == info.status_code){	// 有新版本
+					loadWidget("upgradeWgt.htm", function(){
+						$("#curent").text(info.sw_ver).attr("title",info.sw_ver);
+						$("#new").text(info.new_ver).attr("title",info.new_ver);
+						$("#time").text(info.release_time).attr("title",info.release_time);
+
+						if (info.release_log){
+							var log = unescape(info.release_log.replace(/#x/g,'%u').replace(/\n/g,'<br>'));
+							$("#log").html(log);
+						}
+					});
+				}
+			}else{
+				if (tryCheckUpgradeNum <= 5){
+					setTimeout(checkUpgrade, 3000);
+				}
+			}
+		});*/
+	}
+
+	var tryCheckUpgradeNum = 0;
+	var upgradeLater = "show";
+
+	try{
+		upgradeLater = sessionLS.getItem("upgradeWgt");
+	}catch(e){}
+
+	/*if (upgradeLater !== "hide"){
+		var para = {
+			system:{upgrade_info:{action:"start"}}
+		};
+
+		apiGet(para, function(){
+			tryCheckUpgradeNum = 0;
+			setTimeout(checkUpgrade, 3000);
+		});
+	}*/
+
+	if (ROUTER.languageList.length > 1){
+		$("div.language").show();
+		$("ul.right-tool").addClass("right-width");
+	}else{
+		$("div.language").hide();
+		$("ul.right-tool").removeClass("right-width");
+	}
+
+	var curLang = ROUTER.lang;
+	var langListUsed = LANGLIST.getLangList();
+
+	for (var i = 0; i < langListUsed.length; i++){
+		if (langListUsed[i]["value"] == curLang){
+			$("span.language").text(langListUsed[i]["name"]);
+		}
+	}
+
+	initList("Language", langListUsed, function(val){
+		for (var i = 0; i < langListUsed.length; i++){
+			if (langListUsed[i]["value"] == val){
+				$("span.language").text(langListUsed[i]["name"]);
+				break;
+			}
+		}
+
+		var data = {};
+		data.lang = val;
+
+		apiSetWithUrl("/welcome/config", data, function(ret){
+			var code = ret[ERR_CODE];
+			if (E_NONE == code){
+				window.location.reload();
+			}else{
+				$.setTimeout(function(){
+					errHandle(code);
+				}, 800);
+			}
+		});
+	});
+
+	function errHandle(code){
+		switch(code){
+		case E_NONE:
+			return false;
+		default:
+			showNote(errStr.unknownErr + code);
+			break;
+		}
+
+		return true;
+	}
+})();
+</script>
+<%
+	local para = {device = {info = {}}}
+	local result = tpl_get_data(para)
+	local dev_mac = result[K_MODULE].device.info.mac
+-%>
+<div class="head">
+	<div class="left-logo">
+		<img class="logo" src="/luci-static/images/phicomm.png?_=20171121163152" alt="phicomm" />
+		<span class="brand">{%label.phicomm%}</span>
+	</div>
+	<ul class="menu center-con">
+		<a href="#/pc/netState" data-active="netState"><li class="menu-item">
+			<p>{%label.netState%}</p>
+		</li></a>
+		<a href="#/pc/deviceManage" data-active="deviceManage"><li class="menu-item">
+			<p>{%label.devManage%}</p>
+		</li></a>
+		<a href="#/pc/wifiSet" data-active="wifiSet"><li class="menu-item">
+			<p>{%label.wifiSet%}</p>
+		</li></a>
+		<a href="#/pc/App" data-active="App"><li class="menu-item">
+			<p>{%label.appSet%}</p>
+		</li></a>
+	</ul>
+	<ul class="right-tool">
+		<li class="tool-item">
+			<i id="Tool" class="icon icon_router"></i>
+		</li>
+		<li id="HelpIcon" class="tool-item"><i class="icon icon_help"></i></li>
+	</ul>
+	<div class="language">
+		<ul class="language">
+			<li class="language-item">
+				<span id="Language">
+					<span class="language"></span>
+					<i class="lang-icon">E</i>
+				</span>
+			</li>
+		</ul>
+	</div>
+</div>
+<div id="Content" class="center-con"></div>
+<div class="footer">
+	<div class="bottom-ico code-hide"><p class="code-ico"><i class="icon icon_code code-img"></i></p></div>
+	<div class="code-show hidden"><div class="code-img "></div></div>
+	<div class="bottom-ico hotline-hide" id="HotlineIco"><p class="code-ico"><i class="icon icon_service code-img"></i></p></div>
+	<div class="hotline-show hidden">
+		<div id="Hotline" class="hotline">
+			<p class="phone-con"><i class="icon icon_phone phone-img"></i><span class="phone-tip">{%label.hotline%}</span></p>
+			<p class="phone-num">4007-567-567</p>
+		</div>
+	</div>
+	<div class="info center-con foot-con">
+		<div class="route-info">
+			<a href="javascript:showUserAgreement();" id="ShowAgreement" class="user-agreement">{%label.userAgreement%}</a>
+			<span id="DevMac">{%label.macAddr%}{%label.colon%}<span id="RouterMac"><%=dev_mac%></span></span>
+			<p class="company copyright">{%label.phicommTechnologyCoLtd%}</p>
+		</div>
+	</div>
+</div>

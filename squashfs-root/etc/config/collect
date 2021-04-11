@@ -1,0 +1,9 @@
+config core main
+    option uploaded_fixed '0'
+    option wireless_md5 '0'
+    option reboot_flag '0'
+    option log '0'
+    option parent_used '0'
+    option timereboot_hour '0'
+    option timereboot_minute '0'
+    option wifi_time_switch_ever_used '0'

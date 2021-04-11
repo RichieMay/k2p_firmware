@@ -1,0 +1,60 @@
+<style type="text/css">div.btn-con{position:absolute;width:100%;bottom:1rem}div.open-bg{width:100%;text-align:center;position:absolute}i.close-led{display:inline-block;background:url(/luci-static/images/pic_light.png?_=20180420151033) no-repeat;background-size:100% 100%;width:5.347rem;height:3.88rem;margin-top:3.067rem}i.open-led{display:inline-block;background:url(/luci-static/images/pic_light_blue.png?_=20180420151033) no-repeat;background-size:100% 100%;width:5.347rem;height:3.88rem;margin-top:3.067rem}</style>
+<script type="text/javascript">
+(function(){
+	<%-
+		local para = {
+			light = {config = {}}
+		}
+
+		local result = tpl_get_data(para)
+		local enable = result[K_MODULE].light.config.enable
+	-%>
+	var enable = '<%=enable%>';
+
+	initSwitch("Switch", enable, function(state, init){
+		if (1 == state){
+			$("p.close-tip").hide();
+			$("div.open-bg").show();
+		}else{
+			$("p.close-tip").show();
+			$("div.open-bg").hide();
+		}
+
+		if(!init){
+			var para = {};
+			para.light = {};
+			para.light.config = {enable:$("#Switch").attr("data-value")};
+
+			showLoading(label.saving);
+			apiSet(para, function(ret){
+				var code = ret[ERR_CODE];
+				handleError(code, showNote)?closeLoading():closeLoading(ret[K_MODULE].light.config.wait_time);
+			});
+		}
+	});
+})();
+</script>
+<div class="head-con">
+	<a href="javascript:history.go(-1);" class="head-btn-l"><i class="head-btn icon icon_back"></i></a>
+	<h1 class="head-title">{%label.ledSet%}</h1>
+</div>
+<div class="set-con below-head">
+	<ul class="blank-bg"></ul>
+	<ul class="set-con set-switch">
+		<label class="desc-lbl">{%label.ledSet%}</label>
+		<span id="Switch" class="switch">
+			<i class="switch-circle"></i>
+		</span>
+	</ul>
+	<div class="open-bg">
+		<i class="open-led"></i>
+	</div>
+	<div class="close-bg">
+		<i class="close-led"></i>
+		<p class="close-tip">{%label.ledClose%}</p>
+	</div>
+	<div class="err-note hidden">
+		<i class="err-icon icon_remind_line"></i>
+		<p class="note-str"></p>
+	</div>
+</div>

@@ -1,0 +1,10 @@
+Package: libblobmsg-json
+Version: 2018-03-21-eebe3fcd2a5728264faa5ae72bbc38d7bb704c8e
+Depends: libc, libjson-c, libubox
+Source: package/libs/libubox
+License: ISC BSD-3c
+Section: libs
+Maintainer: Felix Fietkau <nbd@openwrt.org>
+Architecture: ramips_1004kc
+Installed-Size: 3965
+Description:  unknown

@@ -1,0 +1,279 @@
+<style type="text/css">div.tab-con{font-size:14px;color:#4f5356;text-align:center;margin:40px 50px 10px}table.set-con{width:100%;border-collapse:collapse;table-layout:fixed}.set-con-long{width:18%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.set-con-middle{width:15%}.set-con-short{width:16%}input.text-con{color:#4f5356;height:34px;line-height:34px;width:100%;padding:0 .5em;font-size:14px;border:1px solid #DDD;border-radius:4px;text-align:center}#DeviceTable li.text-tip{height:34px;line-height:34px;margin:0 0 4px;width:42%!important}#DeviceTable li.text-width{width:80%!important}li.text-con span.select-con{width:100%;padding:0;height:34px;line-height:31px}span.select span.sel-con{width:80%;line-height:31px;height:34px;text-align:left}li.text-tip ul.sel-opts-ul{width:100%}li.option span{padding:0 5px}.boder-tr{border-bottom:1px solid #e7e7e7;height:40px;line-height:40px;background-color:#f4f4f4}ul.add-btn{color:#ff8000;margin-top:4px;font-size:32px;float:right;margin-right:30px;cursor:pointer}ul.add-invalid{color:#bfbfbf;cursor:default}span.btn-color{color:#bfbfbf}span.handle-tip{display:inline-block;width:50%;height:30px;cursor:pointer}.table-height{height:40px;line-height:40px;border-bottom:1px solid #e7e7e7}ul.set-select-ul{position:absolute;border:1px solid lightgrey;height:139px;width:136px;top:-1px;left:-1px;background:#fff;display:none}#UrlBlockTable .list li:hover{background:#f0f0f0}ul.list{top:0;overflow-x:hidden;border:1px solid #DDD;border-top:0;text-align:left;position:absolute;line-height:31px;cursor:pointer;max-height:160px;display:none;margin-left:-1px;border-top:0;width:136px;background:#fff;z-index:1000}span.text-con{width:160px;line-height:40px;display:inline-block;vertical-align:middle;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}i.vendor-icon{font-size:40px;display:inline-block;width:40px;height:40px;margin-right:10px;vertical-align:middle}i.icon_add{font-size:38px}</style>
+<script type="text/javascript">
+(function(){
+	<%
+		local para = {
+			url_block = {config = {}, url_list = {}},
+			device_manage = {client_list = {}}
+		}
+
+		local result = tpl_get_data(para, true)
+	-%>
+
+	var editMac = "";
+	sessionLS.removeItem("urlBlockItemId");
+	sessionLS.removeItem("urlBlockItemMac");
+	sessionLS.removeItem("urlBlockItemName");
+
+	var urlBlockInfo = <%=result%>;
+	var webFeature = getWebFeature("urlBlock");
+	var tabLength = webFeature.tabLength;
+
+	init(urlBlockInfo);
+
+	function init(result){
+		var errNo = result[ERR_CODE];
+		var ret;
+		if (E_NONE == errNo){
+			ret = result[K_MODULE];
+		}else{
+			console.log(result);
+			return;
+		}
+
+		var switchButton = ret.url_block.config;
+
+		initSwitch("Switch", switchButton.enable, function(state,init){
+			if (1 == state){
+				$("#UrlBlockTable").show();
+			}else{
+				$("#UrlBlockTable").hide();
+			}
+
+			if (!init){
+				var data = {};
+				var para = {};
+				para.url_block = {};
+				para.url_block.config = data;
+
+				data.enable = $("#Switch").attr("data-value");
+				showLoading(label.saving);
+				apiSet(para, function(){
+					$.setTimeout(function(){
+						closeLoading();
+					}, 2000);
+				});
+			}
+		});
+	}
+
+	var ruleLen;
+	var hashList = [];
+	var devList = [];
+	var macList = [];
+
+	var urlList = urlBlockInfo[K_MODULE].url_block.url_list;
+	var deviceLists = urlBlockInfo[K_MODULE].device_manage.client_list;
+	deviceLists = removeByType(deviceLists, 4);
+
+	for (var i = 0; i < deviceLists.length; i++){
+		devList[i] = {name:deviceLists[i].name, value:deviceLists[i].mac};
+		macList[i] = deviceLists[i].mac;
+	}
+
+	function deviceRule(ret){
+		ruleLen = ret.length;
+		if (parseInt(tabLength) == ruleLen || devList.length <= 0){
+			$("ul.add-btn").addClass("add-invalid");
+		}
+
+		if (0 == ruleLen){
+			$("ul.add-btn").click();
+		}else{
+			for (var i = 0; i < ruleLen; i++){
+				hashList[ret[i].id] = i;
+				$("#DeviceTable").append(initDeviceEntry(ret[i]));
+			}
+
+			if (devList.length <= 0){
+				$("ul.add-btn").addClass("add-invalid");
+			}
+
+			$("span.del-item").click(function(){
+				if("" != editMac)
+					return ;
+				var data = {};
+				var para = {};
+				para.url_block = {};
+				para.url_block.url_list = data;
+
+				data.id = $(this).attr("data-value");
+				showLoading(label.saving);
+				apiDel(para, function(){
+					$.setTimeout(function(){
+					closeLoading();
+						stateman.go("pc.urlBlockApp");
+					}, 2000);
+				});
+			});
+
+			$("span.set-item").click(function(){
+				var clientId = $(this).attr("data-value");
+				var clientsIndex = hashList[clientId];
+				var macValue = ret[clientsIndex].mac;
+				var nameValue = ret[clientsIndex].name;
+
+				if("" == editMac || macValue == editMac){
+					editMac = macValue;
+
+					sessionLS.setItem("urlBlockItemId", clientId);
+					sessionLS.setItem("urlBlockItemMac", macValue);
+					sessionLS.setItem("urlBlockItemName", nameValue);
+
+					loadWidget("urlSet.htm");
+				}
+			});
+		}
+	}
+
+	function removeDeviceFromList(deviceList, mac){
+		if (!mac){
+			return;
+		}
+
+		for(var i = 0; i < deviceList.length; i++){
+			if(mac == deviceList[i].value){
+				deviceList.splice(i, 1);
+				return;
+			}
+		}
+	}
+
+	function removeByType(clients, type){
+		for(var i=0; i<clients.length; i++){
+			if(type == clients[i].device_type){
+				clients.splice(i,1);
+			}
+		}
+		return clients;
+	}
+
+	function initDeviceEntry(client){
+		var icon;
+		if(client.brand){
+			icon = "icon_" + getAlias(client.brand);
+		}else{
+			icon = "icon_" + getVendor(client.mac);
+		}
+
+		removeDeviceFromList(devList, client.mac);
+		return '<tr class="table-height" data-value="' + client.id +'">' +
+					'<td class="set-con-long">' +
+						'<i class="vendor-icon ' + icon + '"></i>' +
+						'<span class="text-con" title="' + client.name + '">' + client.name + '</span>' +
+					'</td>' +
+					'<td class="set-con-long">' + client.mac + '</td>' +
+					'<td class="status-handle">' +
+						'<span class="handle-tip color-orange set-item" data-value="' + client.id +'">' + btn.set +  '</span>' +
+					'</td>' +
+					'<td class="status-handle">' +
+						'<span class="handle-tip color-orange del-item" data-value="' + client.id +'">' + btn.del +  '</span>' +
+					'</td>' +
+				'</tr>';
+	}
+
+	var newRow = '<td>' +
+					'<li class="text-con text-tip text-width">' +
+						'<span id="RuleName" class="select select-con">' +
+							'<span class="value sel-value sel-con">' + '</span>' +
+							'<i class="tip icon_list-expansion">' + '</i>' +
+						'</span>' +
+					'</li>' +
+				'</td>' +
+				'<td id="RuleMac"></td>' +
+				'<td class="set-con">' +
+					'<span class="handle-tip color-orange set-item" id="EditUrl">' + btn.set +  '</span>' +
+				'</td>' +
+				'<td class="set-con">' +
+					'<span class="handle-tip color-orange" id="CancelAdd">' + btn.cancel +  '</span>' +
+				'</td>';
+
+	$("ul.add-btn").click(function(){
+		if ("" == editMac && devList.length > 0){
+			var newMac, newName;
+			if (document.getElementById("DeviceTable").rows.length < parseInt(tabLength) + 1){
+				$("td.status-handle span.color-orange").addClass("btn-color").removeClass("color-orange");
+
+				var emptyRow =  '<tr class="table-height">' + newRow + '</tr>';
+				$("#DeviceTable").append(emptyRow);
+				editMac = devList[0].value;
+				initSelect("RuleName", devList, devList[0].value, function(val){
+					for (var i = 0; i < deviceLists.length; i++){
+						if (deviceLists[i].mac == val){
+							newMac = deviceLists[i].mac;
+							newName = deviceLists[i].name;
+							$("#RuleMac").text(newMac);
+							editMac = deviceLists[i].mac;
+						}
+					}
+				});
+
+				$("ul.add-btn").addClass("add-invalid");
+			}else{
+				$("ul.add-btn").addClass("add-invalid");
+			}
+
+			$("#EditUrl").click(function(){
+				$("ul.add-btn").addClass("add-invalid");
+
+				var clientId = "";
+				var macValue = newMac;
+				var nameValue = newName;
+
+				sessionLS.removeItem("urlBlockItemId");
+				sessionLS.setItem("urlBlockItemId", clientId);
+				sessionLS.setItem("urlBlockItemMac", macValue);
+				sessionLS.setItem("urlBlockItemName", nameValue);
+
+				loadWidget("urlSet.htm");
+			});
+
+			$("#CancelAdd").click(function(){
+				stateman.go("pc.urlBlockApp");
+			});
+		}
+	});
+
+	deviceRule(urlList);
+})();
+</script>
+<div class="help hidden">
+	<ul class="help-content">
+		<li class="help-head">
+			<img class="app-icon" src="/luci-static/images/app-icon/url_block.png?_=20180420151033" />
+			<span class="help-title">{%label.urlBlock%}</span>
+		</li>
+		<div id="HelpUrlBlock">
+		</div>
+	</ul>
+</div>
+<div class="head-con">
+	<img class="app-icon" src="/luci-static/images/app-icon/url_block.png?_=20180420151033" />
+	<a href="javascript:history.go(-1);" class="head-btn-l">
+		<i class="head-btn icon icon_back"></i>
+		<span class="head-title">{%label.urlBlock%}</span>
+	</a>
+</div>
+<div class="set-con below-head">
+	<ul class="set-con">
+		<li class="text-con">
+			<label class="desc-lbl">{%label.urlBlock%}</label>
+			<span class="set-con-middle">
+				<span id="Switch" class="switch">
+					<i class="switch-circle"></i>
+				</span>
+			</span>
+		</li>
+	</ul>
+	<div id="UrlBlockTable" class="tab-con table-con hidden">
+		<table id="DeviceTable" class="set-con">
+			<tr class="boder-tr">
+				<th class="set-con-long">{%label.deviceName%}</th>
+				<th class="set-con-long">{%label.macAddr%}</th>
+				<th class="set-con-short table-con-handle">{%label.blockUrl%}</th>
+				<th class="set-con-short table-con-handle">{%label.handle%}</th>
+			</tr>
+		</table>
+		<ul class="add-btn"><i class="icon_add"></i></ul>
+	</div>
+</div>

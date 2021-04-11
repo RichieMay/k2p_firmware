@@ -1,0 +1,91 @@
+<style type="text/css">div.head-con{border-bottom-width:0}div.welcome{background-color:#FFF;text-align:center}i.router{display:inline-block;background:url(/luci-static/images/password.png?_=20180420151033) no-repeat;background-size:100% 100%;width:6.587rem;height:6.067rem}ul.set-con{padding:0 1rem;margin:0}div.err-note{padding:0 1rem 0 .6rem}</style>
+<script type="text/javascript">
+(function(){
+	$("#Save").click(function(){
+		var pwd = $("#PwdNew").val();
+		var confirmPwd = $("#PwdCfm").val();
+
+		if (handleError(checkPwdNew(pwd, confirmPwd))){
+			return;
+		}
+
+		var pwdEncoded = new Base64().base64encode(pwd);
+		var data = {};
+
+		data.username = "admin";
+		data.password = pwdEncoded;
+
+		showLoading(label.saving);
+
+		apiRegister(data, function(ret){
+			var code = ret[ERR_CODE];
+			$.setTimeout(function(){
+				closeLoading();
+				handleError(code, showAlert)?refreshError(code):refreshEnone();
+			}, 2000);
+		});
+	});
+
+	function checkPwdNew(pwdNew, pwdCfm){
+		var err = checkStrFormat(pwdNew);
+
+		switch(err){
+		case E_STRINGBLANK:
+			return E_PWD_NEW_BLANK;
+		case E_STRINGFORMAT:
+			return E_PWD_NEW_ILLEGAL;
+		}
+
+		if (checkStrLen(pwdNew, 63, 5)){
+			return E_PWD_NEW_LEN;
+		}
+
+		if (pwdNew != pwdCfm){
+			return E_PWD_NEW_REPEAT_SAME;
+		}
+
+		return E_NONE;
+	}
+
+	function refreshError(code){
+		showAlert(getErrTip(code), function(){
+			stateman.emit("reset");
+		});
+	}
+
+	function refreshEnone(){
+		closeLoading();
+		stateman.emit("reset");
+	}
+})();
+</script>
+<div class="head-con">
+	<h1 class="head-title">{%label.adminPwd%}</h1>
+</div>
+<div class="set-con below-head">
+	<div class="welcome">
+		<i class="router"></i>
+	</div>
+	<p class="set-con-desc">{%label.setAdminPwd%}</p>
+	<ul class="set-con">
+		<label class="desc-lbl desc-width">{%label.adminPwd%}</label>
+		<li class="text-con">
+			<input class="text ime-mode-n hover text-width" maxLength="63" id="PwdNew" value="" placeholder="{%label.pwdLenTip%}" />
+			<i class="tip icon-eye" data-value="0"></i>
+		</li>
+	</ul>
+	<ul class="set-con">
+		<label class="desc-lbl desc-width">{%label.confirmPwd%}</label>
+		<li class="text-con">
+			<input class="text ime-mode-n hover text-width" maxLength="63" id="PwdCfm" value="" placeholder="{%label.pwdLenTip%}" />
+			<i class="tip icon-eye" data-value="0"></i>
+		</li>
+	</ul>
+	<div class="err-note hidden">
+		<i class="err-icon icon_remind_line"></i>
+		<p class="note-str"></p>
+	</div>
+	<div class="btn-con">
+		<input id="Save" class="btn" type="button" value="{%btn.nextStep%}" />
+	</div>
+</div>

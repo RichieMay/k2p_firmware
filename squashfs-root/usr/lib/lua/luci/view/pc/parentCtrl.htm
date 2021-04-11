@@ -1,0 +1,350 @@
+<style type="text/css">span.to{font-size:14px;color:#4f5356;padding-left:2px;padding-right:2px}div.tab-con{font-size:14px;color:#4f5356;text-align:center;margin:40px 50px 10px}table.set-con{width:100%;border-collapse:collapse;table-layout:fixed}.set-con-long{width:18%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.set-con-middle{width:15%}.set-con-short{width:16%}input.text-con{color:#4f5356;height:34px;line-height:34px;width:100%;padding:0 .5em;font-size:14px;border:1px solid #DDD;border-radius:4px;text-align:center}#ParentTable li.text-tip{height:34px;line-height:34px;margin:0 0 4px;width:42%!important}#ParentTable li.text-width{width:90%!important}li.text-con span.select-con{width:100%;padding:0;height:34px;line-height:31px}span.select span.sel-con{width:80%;line-height:31px;height:34px;text-align:left}li.text-tip ul.sel-opts-ul{width:100%}li.option span{padding:0 5px}.boder-tr{border-bottom:1px solid #e7e7e7;height:40px;line-height:40px;background-color:#f4f4f4}ul.add-btn{color:#ff8000;margin-top:4px;font-size:32px;float:right;margin-right:30px;cursor:pointer}ul.add-invalid{color:#bfbfbf;cursor:default}span.btn-color{color:#bfbfbf}span.handle-tip{display:inline-block;width:50%;height:30px;cursor:pointer}.table-height{height:40px;line-height:40px;border-bottom:1px solid #e7e7e7}ul.set-select-ul{position:absolute;border:1px solid lightgrey;height:139px;width:136px;top:-1px;left:-1px;background:#fff;display:none}p.note-str{text-align:left}#ParentCtrlTable .list li:hover,.week li:hover{background:#f0f0f0}div.day{width:140px;margin:0 auto;position:relative}span.rule-none{height:34px;line-height:34px;text-align:center;width:100%;height:34px;float:left;display:none;position:absolute}div.daySelect{border:1px solid #DDD;border-radius:4px;height:34px;width:136px;line-height:34px}input.drop_input{border:0;padding:0;height:34px;line-height:34px;cursor:pointer;width:80%;color:#4f5356;font-size:14px;padding-right:12%;background:#fff;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}i.drop_icon{font-size:28px;margin-top:3px;left:80%;cursor:pointer;position:absolute}ul.list{top:0;overflow-x:hidden;border:1px solid #DDD;border-top:0;text-align:left;position:absolute;line-height:31px;cursor:pointer;max-height:160px;display:none;margin-left:-1px;border-top:0;width:136px;background:#fff;z-index:1000}li.dayList li,.week li{text-align:center;padding:0 10px;border-top:1px solid #DDD;cursor:pointer;height:36px;line-height:36px}ul.week{line-height:31px;border:1px solid #DDD;border-top:0;width:90px;position:absolute;margin-left:137px;margin-top:75px;z-index:1000;background:#fff}.dayList li,.week li{text-align:center;padding:0 10px;border-top:1px solid #DDD;cursor:pointer;height:36px;line-height:36px}.week i{color:#fe8f19;font-size:22px;line-height:36px;vertical-align:middle}li.time_edit{height:34px;line-height:34px;text-align:center;width:100%;display:inline-block}i.edit-time{color:#ff8000;font-size:32px;cursor:pointer;vertical-align:middle}i.edit-invalid{color:#bfbfbf;cursor:default}span.hidden{display:none}i.icon_add{font-size:38px}</style>
+<script type="text/javascript">
+(function(){
+	<%
+		local para = {
+			parent_ctrl = {config = {}, parent_list = {}},
+			device_manage = {client_list = {}}
+		}
+
+		local result = tpl_get_data(para, true)
+	-%>
+	var editMac = "";
+	sessionLS.removeItem("mac");
+	sessionLS.removeItem("ruleList");
+	sessionLS.removeItem("oldList");
+	var parentInfo = <%=result%>;
+	var webFeature = getWebFeature("parentCtrl");
+	var tabLength = webFeature.tabLength;
+
+	initConfig(parentInfo);
+	function initConfig(result){
+		var errNo = result[ERR_CODE];
+		var ret;
+		if (E_NONE == errNo){
+			ret = result[K_MODULE];
+		}else{
+			return;
+		}
+		var switchParent = ret.parent_ctrl.config;
+
+		initSwitch("SwitchParent", switchParent.enable, function(state,init){
+			if (1 == state){
+				$("#ParentCtrlTable").show();
+			}else{
+				$("#ParentCtrlTable").hide();
+			}
+
+			if (!init){
+				var data = {};
+				var para = {};
+				para.parent_ctrl = {};
+				para.parent_ctrl.config = data;
+
+				data.enable = $("#SwitchParent").attr("data-value");
+				showLoading(label.saving);
+				apiSet(para, function(ret){
+					$.setTimeout(function(){
+						closeLoading();
+					}, getMaxWaitTime(ret));
+				});
+			}
+		});
+	}
+
+	var parentRuleLen;
+	var hashList = [];
+	var devList = [];
+	var macList = [];
+
+	var parentList = parentInfo[K_MODULE].parent_ctrl.parent_list;
+	var deviceList = parentInfo[K_MODULE].device_manage.client_list;
+	deviceList = removeByType(deviceList, 4);
+
+	var formatRuleList = [];
+	initData(parentList, formatRuleList);
+	for (var i = 0; i < deviceList.length; i++){
+		devList[i] = {name:deviceList[i].name, value:deviceList[i].mac};
+		macList[i] = deviceList[i].mac;
+	}
+
+	function initData(oldList, ruleList){
+		var index = 0;
+		for(var i=0; i<oldList.length; i++){
+			var rule = {};
+			var cycle = [];
+			var tmpStrCycle = oldList[i].cycle;
+			rule.mac = oldList[i].mac;
+			rule.name = oldList[i].name;
+			rule.brand = oldList[i].brand;
+			for(var j = tmpStrCycle.indexOf("1"); j >= 0;
+				tmpStrCycle = removeDayFromCycle(tmpStrCycle, j),
+				j = tmpStrCycle.indexOf("1")){
+				var cycleCell = {};
+				cycleCell.startTime = oldList[i].start_time;
+				cycleCell.endTime = oldList[i].end_time;
+				cycleCell.day = cycleToDay(tmpStrCycle);
+				cycleCell.id = oldList[i].id;
+				cycle.push(cycleCell);
+				if(0 != addTimeCycle(cycle, rule.mac, ruleList)){
+					rule.cycle = cycle;
+					ruleList.push(rule);
+				}
+			}
+		}
+	}
+	function parentRule(ret){
+		parentRuleLen = ret.length;
+
+		if (0 == parentRuleLen){
+			$("ul.add-btn").click();
+		}else{
+			for (var i = 0; i < parentRuleLen; i++){
+				hashList[ret[i].id] = i;
+				$("#ParentTable").append(initParentEntry(ret[i]));
+			}
+
+			$("span.del-item").click(function(){
+				if("" != editMac)
+					return ;
+				var mac = $(this).parents("tr").attr("data-value");
+				showLoading(label.saving);
+				delParentCtrl(mac, parentList, formatRuleList);
+			});
+			$("i.edit-time").click(function(){
+				var mac = $(this).parents("tr").attr("data-value");
+				if("" == editMac || mac == editMac){
+					editMac = mac;
+					$("td.status-handle span.color-orange").addClass("btn-color").removeClass("color-orange");
+					$("ul.add-btn").addClass("add-invalid");
+					$("i.edit-time").addClass("edit-invalid");
+					var sel = "tr[data-value='" + editMac + "']";
+					$(sel).find("i.edit-time").removeClass("edit-invalid");
+					sessionLS.setItem("mac", mac);
+					sessionLS.setItem("ruleList", JSON.stringify(formatRuleList));
+					sessionLS.setItem("oldList", JSON.stringify(parentList));
+					loadWidget("timePick.htm");
+				}
+			});
+		}
+		if (formatRuleList.length >= parseInt(tabLength) || devList.length <= 0){
+			$("ul.add-btn").addClass("add-invalid");
+		}
+	}
+
+	function initParentEntry(client){
+		removeDeviceFromList(devList, client.mac);
+		return  '<tr class="table-height" data-value="' + client.mac +'">' +
+					'<td class="set-con-long" title="' + client.name + '">' + client.name + '</td>' +
+					'<td>' + client.mac + '</td>' +
+					'<td class="set-con-long">' +
+							'<i class="icon_clock edit-time"></i>' +
+					'</td>' +
+					'<td class="status-handle">' +
+						'<span class="handle-tip color-orange del-item" >' + btn.del +  '</span>' +
+					'</td>' +
+				'</tr>';
+	}
+
+	var newRow =  '<td>' +
+						'<li class="text-con text-tip text-width">' +
+							'<span id="RuleName" class="select select-con">' +
+								'<span class="value sel-value sel-con">' + '</span>' +
+								'<i class="tip icon_list-expansion">' + '</i>' +
+							'</span>' +
+						'</li>' +
+					'</td>' +
+					'<td id="RuleMac"></td>'+
+					'<td class="set-con-long "  >' +
+							'<i class="icon_clock edit-time btn-color" id="EditTime" data-value="[]"></i>' +
+					'</td>';
+
+	//var saveButton = '<td class="status-handle"><span class="handle-tip color-orange" id="SaveAdd">' + btn.save +  '</span></td>';
+	var delButton = '<td class="status-handle"><span class="handle-tip color-orange" id="CancelAdd" >' + btn.cancel +  '</span></td>';
+	$("ul.add-btn").click(function(){
+		if ("" == editMac){
+			if (document.getElementById("ParentTable").rows.length < parseInt(tabLength) + 1
+				&& devList.length > 0){
+
+				$("td.status-handle span.color-orange").addClass("btn-color").removeClass("color-orange");
+				$("i.edit-time").addClass("edit-invalid");
+				var emptyRow =  '<tr class="table-height">' + newRow + delButton + '</tr>';
+				$("#ParentTable").append(emptyRow);
+				editMac = devList[0].value;
+				initSelect("RuleName", devList, editMac, function(val){
+					for (var i = 0; i < deviceList.length; i++){
+						if (deviceList[i].mac == val){
+							$("#RuleMac").text(deviceList[i].mac);
+							editMac = deviceList[i].mac;
+							$("#RuleName").parents("tr").attr("data-value", editMac);
+							addEmptyRule(deviceList[i], formatRuleList);
+						}
+					}
+				});
+				var sel = "tr[data-value='" + editMac + "']";
+				$(sel).find("i.edit-time").removeClass("edit-invalid");
+				$("ul.add-btn").addClass("add-invalid");
+			}else{
+				$("ul.add-btn").addClass("add-invalid");
+			}
+
+			$("i.edit-time").click(function(){
+				var mac = $(this).parents("tr").attr("data-value");
+				if("" == editMac || mac == editMac){
+					editMac = mac;
+					//$("td.status-handle span.color-orange").addClass("btn-color").removeClass("color-orange");
+					$("ul.add-btn").addClass("add-invalid");
+					$("i.edit-time").addClass("edit-invalid");
+					var sel = "tr[data-value='" + editMac + "']";
+					$(sel).find("i.edit-time").removeClass("edit-invalid");
+					sessionLS.setItem("mac", mac);
+					sessionLS.setItem("ruleList", JSON.stringify(formatRuleList));
+					sessionLS.setItem("oldList", JSON.stringify(parentList));
+					loadWidget("timePick.htm");
+				}
+			});
+			$("#CancelAdd").click(function(){
+				stateman.go("pc.parentCtrlApp");
+			});
+		}
+	});
+
+	function addTimeCycle(cycle, mac, ruleList){
+		for(var i=0; i<ruleList.length; i++){
+			if(mac == ruleList[i].mac){
+				ruleList[i].cycle = ruleList[i].cycle.concat(cycle);
+				return 0;
+			}
+		}
+		return 1;
+	}
+
+	function delParentCtrl(mac, oldList, ruleList){
+		var data = [];
+		var para = {};
+		para.parent_ctrl = {};
+		parent_list = {};
+		parent_list.rule_list = data;
+		for(var i=0; i<oldList.length; i++){
+			if(mac == oldList[i].mac){
+				var cell = {};
+				cell.id = oldList[i].id;
+				data.push(cell);
+			}
+		}
+		para.parent_ctrl.parent_list = parent_list;
+
+		apiDel(para, function(ret){
+			if(E_NONE == ret[ERR_CODE]){
+				$.setTimeout(function(){
+					closeLoading();
+					stateman.go("pc.parentCtrlApp");
+				}, getMaxWaitTime(ret));
+			} else {
+				handleError(code);
+				closeLoading();
+			}
+		});
+	}
+
+	function removeDayFromCycle(cycle, day){
+		return cycle.substr(0,day) + "0" + cycle.substr(day+1,6-day);
+	}
+
+	function cycleToDay(cycle){
+		return cycle.indexOf("1");
+	}
+
+	function addEmptyRule(device, ruleList){
+		for(var i=0; i<ruleList.length; i++){
+			if(device.mac == ruleList[i].mac){
+				return 0;
+			}
+		}
+		var rule = {};
+		rule.name = device.name;
+		rule.mac = device.mac;
+		rule.brand = "";
+		rule.cycle = [];
+		ruleList.push(rule);
+	}
+	function removeMacFromList(macList, mac){
+		if (!mac){
+			return;
+		}
+		for(var i=0; i<macList.length; i++){
+			if(mac == macList[i].mac){
+				macList.splice(i,1);
+				return ;
+			}
+		}
+	}
+	function removeDeviceFromList(deviceList, mac){
+		if (!mac){
+			return;
+		}
+		for(var i=0; i<deviceList.length; i++){
+			if(mac == deviceList[i].value){
+				deviceList.splice(i,1);
+				return ;
+			}
+		}
+	}
+
+	function removeByType(clients, type){
+		for(var i=0; i<clients.length; i++){
+			if(type == clients[i].device_type){
+				clients.splice(i,1);
+			}
+		}
+		return clients;
+	}
+
+	parentRule(formatRuleList);
+
+})();
+</script>
+<div class="help hidden">
+	<ul class="help-content">
+		<li class="help-head">
+			<img class="app-icon" src="/luci-static/images/app-icon/parent_ctrl.png?_=20180420151033" />
+			<span class="help-title">{%label.parentCtrl%}</span>
+		</li>
+		<div id="HelpParentCtrl">
+		</div>
+	</ul>
+</div>
+<div class="head-con">
+	<img class="app-icon" src="/luci-static/images/app-icon/parent_ctrl.png?_=20180420151033" />
+	<a href="javascript:history.go(-1);" class="head-btn-l">
+		<i class="head-btn icon icon_back"></i>
+		<span class="head-title">{%label.parentCtrl%}</span>
+	</a>
+</div>
+<div class="set-con below-head">
+	<ul class="set-con">
+		<li class="text-con">
+			<label class="desc-lbl">{%label.parentCtrl%}</label>
+			<span class="set-con-middle">
+				<span id="SwitchParent" class="switch">
+					<i class="switch-circle"></i>
+				</span>
+			</span>
+		</li>
+	</ul>
+	<div id="ParentCtrlTable" class="tab-con table-con hidden">
+		<table id="ParentTable" class="set-con">
+			<tr class="boder-tr">
+				<th class="set-con-long">{%label.deviceName%}</th>
+				<th class="set-con-long">{%label.macAddr%}</th>
+				<th class="set-con-long">{%label.accTime%}</th>
+				<th class="set-con-short table-con-handle">{%label.handle%}</th>
+			</tr>
+		</table>
+		<ul class="add-btn"><i class="icon_add"></i></ul>
+		<div class="err-note hidden">
+			<i class="err-icon icon_remind_line"></i>
+			<p class="note-str"></p>
+		</div>
+	</div>
+</div>

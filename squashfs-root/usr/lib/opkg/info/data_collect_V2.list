@@ -1,0 +1,11 @@
+/etc/config/collect
+/usr/sbin/fix_data
+/etc/uci-defaults/sync_data_collect
+/etc/hotplug.d/iface/85-report_need
+/etc/init.d/collect
+/etc/crontabs/root
+/usr/sbin/config_data
+/usr/sbin/statistics_data_daemon_kernel
+/usr/sbin/statistics_data_event
+/usr/sbin/statistics_data_daemon_user
+/usr/sbin/up_data

@@ -1,0 +1,32 @@
+#!/bin/sh
+#=============================================================================
+#     FileName: update_white_list
+#         Desc:  
+#       Author: renhuan.ding
+#        Email: renhuan.ding@feixun.com
+#      Version: 0.0.1
+#   LastChange: 2017-09-13 18:29:28
+#      History:
+#=============================================================================
+touch /tmp/update_wl_lock
+exec 20</tmp/update_wl_lock
+flock -x 20
+
+. /lib/functions.sh
+update() {
+	local section_name=$1
+	uci set white_list.$section_name.ip="`uci get device_manage.$section_name.ip`"
+	uci set white_list.$section_name.brand="`uci get device_manage.$section_name.brand`"
+	uci get common_host.$section_name
+	if [ $? == 0 ]; then
+		uci set white_list.$section_name.hostname="`uci get common_host.$section_name.hostname`"
+	else
+		uci set white_list.$section_name.hostname="`uci get device_manage.$section_name.hostname`"
+	fi
+	uci commit white_list
+}
+config_load white_list
+config_foreach update white_list
+
+flock -u 20
+exec 20<&-

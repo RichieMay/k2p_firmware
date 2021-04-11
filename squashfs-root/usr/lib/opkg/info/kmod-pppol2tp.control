@@ -1,0 +1,10 @@
+Package: kmod-pppol2tp
+Version: 3.10.14-1
+Depends: kernel (=3.10.14-1-869a8ec0260b1131c22159c913023820), kmod-ppp, kmod-pppox, kmod-l2tp
+Source: package/kernel/linux
+License: GPLv2
+Section: kernel
+Status: unknown hold not-installed
+Architecture: ramips_1004kc
+Installed-Size: 11497
+Description:  unknown

@@ -1,0 +1,341 @@
+#!/bin/sh
+###############################################################################
+#     FileName: white_list_set
+#         Desc:  
+#       Author: renhuan.ding
+#        Email: renhuan.ding@feixun.com
+#      Version: 0.0.1
+#   LastChange: 2017-09-06 09:48:10
+#      History:
+###############################################################################
+touch /tmp/update_wl_lock
+exec 20</tmp/update_wl_lock
+flock -x 20
+
+. /lib/functions.sh
+
+usage() {
+	echo "Usage:$0 [option] [parameter]"
+	echo "      option     parameter"
+	echo "      action     add_wl/del_wl/del_bl/clear_bl/enable/disable/update_wl"
+	echo "      mac        ××:××:××:××:××:××"
+	echo "clear_bl and enable have no mac parameter"
+	echo " e.g. $0 add_wl 00:0C:43:98:40:A8"
+}
+
+if [ $# -eq 1 ]; then
+	CONFIG="white_list"
+elif [ $# -eq 2 ]; then
+	MAC=$(echo $2 | tr '[a-z]' '[A-Z]')
+	section_name=${MAC//:/_}
+	CONFIG="white_list"
+else
+	usage
+	exit 1
+fi
+policy=1
+policy_init() {
+	local section_iface=$1
+	local device ifname
+	config_get device "$section_iface" device
+	config_get ifname "$section_iface" ifname
+	uci set wireless.$device.ac_policy=$policy
+	iwpriv $ifname set AccessPolicy=$policy
+	uci commit wireless
+}
+
+entry_set() {
+	local section_iface=$1
+	local add_del=$2
+	local device ifname
+	config_get device "$section_iface" device
+	config_get ifname "$section_iface" ifname
+	if [ "$add_del" = "add" ]; then
+		iwpriv $ifname set ACLAddEntry="$MAC"
+		uci del_list wireless.${device}.ctrl_list="$MAC"
+		uci add_list wireless.${device}.ctrl_list="$MAC"
+	elif [ "$add_del" = "del" ]; then
+		iwpriv $ifname set ACLDelEntry="$MAC"
+		uci del_list wireless.${device}.ctrl_list="$MAC"
+	fi
+	uci commit wireless
+}
+
+#action为add/del
+set_ac_policy() {
+	local MAC=$1
+	local action=$2
+	config_load wireless
+	config_foreach entry_set wifi-iface $action
+}
+
+fix_device_manage() {
+	uci get device_manage.$section_name > /dev/null
+	[ $? -ne 0 ] && return 0
+	block_user=`uci get device_manage.$section_name.block_user`
+	if [ $block_user -eq 1 ]; then
+		uci set  device_manage.$section_name.block_user=0
+		online_status="$(uci get device_manage.${section_name}.online_status)"
+		if [ $online_status -eq "1" ]; then
+			uci set  device_manage.$section_name="online"
+		else
+			uci set  device_manage.$section_name="offline"
+		fi
+		uci commit device_manage
+	fi
+}
+
+add_white_list() {
+	local ret ac_policy_status enable_status
+	uci get device_manage.$section_name > /dev/null
+	ret=$?
+	uci get white_list.$section_name > /dev/null
+	[ $? -ne 0 -a $ret -ne 0 ] && return -1
+
+	uci set $CONFIG.$section_name="white_list"
+	uci set $CONFIG.$section_name.mac=$MAC
+	if [ $ret -eq 1 ]; then
+		uci delete $CONFIG.$section_name.block_time
+	else
+		uci set $CONFIG.$section_name.ip=`uci get device_manage.$section_name.ip`
+		uci set $CONFIG.$section_name.brand=`uci get device_manage.$section_name.brand`
+		uci set $CONFIG.$section_name.hostname=`uci get device_manage.$section_name.hostname`
+		uci set $CONFIG.$section_name.online_time=0
+	fi
+	uci commit $CONFIG
+	fix_device_manage
+
+	enable_status=`uci get white_list.comm_info.enable`
+	[ $enable_status -ne 1 ] && return -1
+
+	ac_policy_status=`uci get wireless.mt7615e2.ac_policy`
+	if [ $ac_policy_status -eq 1 ]; then
+		set_ac_policy $MAC "add"
+	fi
+}
+
+block_list_num=0
+del_section="00_00_00_00_00_00"
+del_block_list_aged() {
+	local section=$1
+	if [ $block_list_num -eq 10 ]; then
+		del_section=$section
+		break
+	fi
+	block_list_num=$(($block_list_num + 1))
+}
+
+del_white_list() {
+	local section enable_status
+	enable_status=`uci get white_list.comm_info.enable`
+	[ $enable_status -ne 1 ] && return -1
+
+	section=`uci get $CONFIG.$section_name`
+	[ "$section" != "white_list" ] && return 1
+
+	uci set $CONFIG.$section_name="block_list"
+	uci delete $CONFIG.$section_name.ip
+	uci delete $CONFIG.$section_name.hostname
+	uci delete $CONFIG.$section_name.online_time
+	uci set $CONFIG.$section_name.block_time="`date "+%Y-%m-%d %k:%M"`"
+	uci reorder $CONFIG.$section_name=1
+	uci commit $CONFIG
+	block_list_num=0
+	config_load $CONFIG 
+	config_foreach del_block_list_aged block_list
+	if [ del_section != "00_00_00_00_00_00" ]; then
+		uci delete $CONFIG.$del_section
+	fi
+
+	ac_policy_status=`uci get wireless.mt7615e2.ac_policy`
+	if [ $ac_policy_status -eq 1 ]; then
+		set_ac_policy $MAC "del"
+	fi
+}
+
+del_block_list() {
+	local section block_name enable_status
+	enable_status=`uci get white_list.comm_info.enable`
+	[ $enable_status -ne 1 ] && return -1
+
+	block_name=$1
+	section=`uci get $CONFIG.$block_name`
+	[ "$section" != "block_list" ] && return 1
+
+	uci delete $CONFIG.$block_name
+	uci commit $CONFIG
+}
+
+clear_block_list() {
+	config_load white_list
+	config_foreach del_block_list block_list
+}
+
+disable_black_list() {
+	local section mac
+	section=$1
+	mac="`uci get device_manage.$section.mac`"
+	set_ac_policy $mac "del"
+}
+
+enable_black_list() {
+	local section mac
+	section=$1
+	mac="`uci get device_manage.$section.mac`"
+	set_ac_policy $mac "add"
+}
+
+disable_white_list_core() {
+	local section mac
+	section=$1
+	mac="`uci get white_list.$section.mac`"
+	set_ac_policy $mac "del"
+}
+
+enable_white_list_core() {
+	local section mac
+	section=$1
+	mac="`uci get white_list.$section.mac`"
+	set_ac_policy $mac "add"
+}
+
+enable_white_list() {
+	local ac_policy_status
+	
+	uci set $CONFIG.comm_info.enable=1
+	uci commit $CONFIG
+
+	/etc/init.d/white_list start
+
+	ac_policy_status=`uci get wireless.mt7615e2.ac_policy`
+	[ "$ac_policy_status" = "1" ] && return 1
+	config_load device_manage
+	config_foreach disable_black_list forbid
+	guest_status=`uci get wireless.@wifi-iface[1].disabled`
+	uci set $CONFIG.comm_info.guest_disabled=$guest_status
+	if [ "$guest_status" = "0" ]; then
+		guest=`uci get wireless.@wifi-iface[1].ifname`
+		uci set wireless.@wifi-iface[1].disabled=1
+		uci commit wireless
+		ifconfig $guest down
+		uci set wifi_time_switch.guest.guestStatus=0
+		uci commit wifi_time_switch
+	fi
+
+	policy=0
+	config_load wireless
+	config_foreach policy_init wifi-iface
+	config_load white_list
+	config_foreach enable_white_list_core white_list
+	policy=1
+	config_load wireless
+	config_foreach policy_init wifi-iface
+}
+
+
+disable_white_list() {
+	local ac_policy_status
+
+	uci set $CONFIG.comm_info.enable=0
+	uci commit $CONFIG
+
+	/etc/init.d/white_list stop
+
+	ac_policy_status=`uci get wireless.mt7615e2.ac_policy`
+	[ "$ac_policy_status" = "2" ] && return 1
+
+	guest_status=`uci get $CONFIG.comm_info.guest_disabled`
+	if [ "$guest_status" = "0" ]; then
+		uci set wireless.@wifi-iface[1].disabled=0
+		guest=`uci get wireless.@wifi-iface[1].ifname`
+		uci commit wireless
+		ifconfig $guest up
+		uci set wifi_time_switch.guest.guestStatus=1
+		uci commit wifi_time_switch
+	fi
+
+	policy=0
+	config_load wireless
+	config_foreach policy_init wifi-iface
+
+	config_load white_list
+	config_foreach disable_white_list_core white_list
+
+	config_load device_manage
+	config_foreach enable_black_list forbid
+
+	policy=2
+	config_load wireless
+	config_foreach policy_init wifi-iface
+}
+
+reset_online_time() {
+	local section
+	section=$1
+	uci set white_list.$section.online_time=0
+	uci commit white_list
+}
+
+# 从终端管理中更新参数
+update() {
+	local section=$1
+	uci set white_list.$section.ip="`uci get device_manage.$section.ip`"
+	uci set white_list.$section.brand="`uci get device_manage.$section.brand`"
+	uci get common_host.$section
+	if [ $? == 0 ]; then
+		uci set white_list.$section.hostname="`uci get common_host.$section.hostname`"
+	else
+		uci set white_list.$section.hostname="`uci get device_manage.$section.hostname`"
+	fi
+	uci commit white_list
+}
+
+update_white_list() {
+	local section mac start_time uptime online_time
+	uptime=`cat /proc/uptime |cut -d" " -f1 | cut -d. -f1`
+	config_load white_list
+	config_foreach reset_online_time white_list
+
+	awk '{ 
+	for(i=1; i<FNR; i++)
+		gsub(/:/, "_");
+		if ($2 != "mac" && $8 != 0) {
+			mac=$2;
+			start_time=$3;
+			online_time="'$uptime'"-start_time;
+			cmd="/sbin/uci set white_list."mac".online_time="online_time;
+			system(cmd);
+		}
+	}' /proc/net/statsPerIp
+	uci commit white_list
+
+	config_load white_list
+	config_foreach update white_list
+}
+
+case $1 in
+	add_wl)
+		add_white_list
+		;;
+	del_wl)
+		del_white_list
+		;;
+	del_bl)
+		del_block_list 
+		;;
+	clear_bl)
+		clear_block_list
+		;;
+	enable)
+		enable_white_list
+		;;
+	disable)
+		disable_white_list
+		;;
+	update_wl)
+		update_white_list
+		;;
+esac
+
+flock -u 20
+exec 20<&-

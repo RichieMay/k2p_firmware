@@ -1,0 +1,10 @@
+Package: libubox-lua
+Version: 2018-03-21-eebe3fcd2a5728264faa5ae72bbc38d7bb704c8e
+Depends: libc, libubox, liblua
+Source: package/libs/libubox
+License: ISC BSD-3c
+Section: libs
+Maintainer: Felix Fietkau <nbd@openwrt.org>
+Architecture: ramips_1004kc
+Installed-Size: 3996
+Description:  unknown

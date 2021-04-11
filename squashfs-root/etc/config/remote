@@ -1,0 +1,6 @@
+
+config remote 'remote'
+        option app_enable '0'
+        option remote_enable '0'
+        option remote_port '8181'
+        option remote_ip '255.255.255.255'

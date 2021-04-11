@@ -1,0 +1,57 @@
+<style type="text/css">div.footer{width:100%;height:160px;position:absolute;bottom:0;font-size:14px;color:#909396;background-color:#2a2c32;text-align:center}div.step-line{position:absolute;top:60px;left:0;right:0;width:480px;height:4px;margin:auto;background-color:#5a5a5a}div.step-width{width:540px}ul.guide-step{margin:32px auto;position:relative;z-index:10;font-size:0}li.step{display:inline-block;font-size:16px;width:240px;text-align:center}li.step-width{width:180px}li.current-step{color:#FFF}h2.step-title{width:32px;height:32px;line-height:32px;border-radius:50%;background-color:#5a5a5a;margin:14px auto}div.footer-small{position:absolute;width:100%;bottom:0;font-size:14px;color:#FFF;display:none;background-color:#2a2c32}ul.guide-small{margin:10px 0;margin-left:35px;position:relative;z-index:10;font-size:0}li.step-small{display:inline-block;font-size:16px;width:100px;text-align:center}h2.title-small{width:32px;height:32px;line-height:32px;border-radius:50%;background-color:#8b8b94;margin-left:0}ul.guide-img{font-size:0;width:300px;text-align:center;height:52px;line-height:52px;position:absolute;margin-left:50px}li.step-img{width:100px;height:17px;display:inline-block;text-align:center;vertical-align:middle;background:url(/luci-static/images/icon_arrow.png?_=20180420151033) no-repeat center;background-size:contain}@media screen and (max-height:520px) and (min-height:20px){div.footer{display:none}div.footer-small{display:block}div.guide{bottom:52px}}</style>
+<script type="text/javascript">
+(function(){
+
+	var stepTipListAll = [{name:label.setLoginPwd, value:"setLgPwd"},
+						{name:label.regionTimeZone, value:"guideTimeZone"},
+						{name:label.networkset, value:"guideNetworkSet"},
+						{name:label.wifiSet, value:"guideWifiSet"}];
+
+	var stepTipList = productSelect(stepTipListAll, ROUTER.guideList);
+
+	var stepEmpty = "";
+	var stepEmptySmall = "";
+
+	for (var i = 0; i < stepTipList.length; i++){
+		var setpNum = i + 1;
+		stepEmpty = '<li class="step" id="' + stepTipList[i].value +'">' +
+					'<h2 class="step-title">' + setpNum +'</h2>' +
+					'<span>' + stepTipList[i].name +  '</span>' +
+					'</li>';
+
+		stepEmptySmall = '<li class="step-small ' + stepTipList[i].value +'">' +
+					'<h2 class="title-small">' + setpNum +'</h2>' +
+					'</li>';
+
+		$("#GuideStep").append(stepEmpty);
+		$("#GuideStepSmall").append(stepEmptySmall);
+	}
+
+	if (stepTipList.length > 3){
+		$("div.step-line").addClass("step-width");
+		$("li.step").addClass("step-width");
+		$("#MoreStep").css('visibility','visible');
+	}else{
+		$("#MoreStep").css('visibility','hidden');
+	}
+
+	var curState = stateman.current.name;
+	if(curState == "checkRouterLink" || curState == "findPppoePwd"){
+		curState = "guideNetworkSet";
+	}
+	$("#" + curState).addClass("current-step");
+	$("." + curState).addClass("current-step");
+})();
+</script>
+<div class="footer">
+	<div class="step-line"></div>
+	<ul id="GuideStep" class="guide-step"></ul>
+</div>
+<div class="footer-small">
+	<ul class="guide-img">
+		<li class="step-img"></li>
+		<li class="step-img"></li>
+		<li id="MoreStep" class="step-img hidden"></li>
+	</ul>
+	<ul id="GuideStepSmall" class="guide-small"></ul>
+</div>

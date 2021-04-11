@@ -1,0 +1,10 @@
+
+config config 'timer'
+	option enable    '0'
+	option startTime    "00 00"
+	option stopTime    "00 00"
+	option old24gStatus    '0'
+	option old5gStatus    '0'
+	option oldGuestStatus    '0'
+	option oldLedStatus    '0'
+	option lastSleepStatus    '0'

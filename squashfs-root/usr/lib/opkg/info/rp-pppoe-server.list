@@ -1,0 +1,6 @@
+/usr/sbin/pppoe-server-guide
+/etc/ppp/pppoe-server-options
+/etc/ppp/pap-secrets
+/etc/ppp/plugins/rp-pppoe.so
+/etc/default/pppoe-server
+/usr/sbin/pppoe-server

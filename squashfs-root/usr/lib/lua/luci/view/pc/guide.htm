@@ -1,0 +1,104 @@
+<style type="text/css">div.guide{top:0}div.center-logo{margin:40px auto 10px;width:219px;height:32px;background:url(/luci-static/images/phicomm.png?_=20180420151033) no-repeat center;background-size:contain}p.web-site{margin:30px auto 60px;font-size:17px;color:#909396}h1.router-name{margin:90px auto;color:#909396}span.router{font-size:22px}span.router-model{margin-left:10px;font-size:16px}div.bg-map{position:absolute;left:0;right:0;top:50%;margin:-130px auto 0;width:771px;height:371px;background:url(/luci-static/images/bg_map.jpg?_=20180420151033) no-repeat center;background-size:contain;z-index:-10}div.login-con{height:130px}input.login-btn{color:#FFF;font-size:16px;cursor:pointer;border:0;height:40px;width:236px;line-height:34px;vertical-align:middle;background:url(/luci-static/images/button.png?_=20180420151033) no-repeat center;background-size:contain}span.desc-lbl a{color:#4f5356;text-decoration:none}ul.set-con{margin:40px 50px 40px}</style>
+<script type="text/javascript">
+(function(){
+	function setLang(){
+		var data = {};
+		data.lang = ROUTER.lang;
+
+		apiSetWithUrl("/welcome/config", data, function(ret){});
+	}
+
+	setLang();
+
+	$("#Start").click(function(){
+		var data = {};
+		data.agreement = parseInt($("i.icon-check").attr("data-value"));
+		apiSetWithUrl("/welcome/config",data,function(){
+			stateman.emit("reset");
+		});
+	});
+
+	var webFeature = getWebFeature("guide");
+	var agreeGuide = webFeature.agreeGuide;
+
+	if (agreeGuide == 1){
+		$("i.icon-check").attr("data-value","1")
+	}else{
+		$("i.icon-check").attr("data-value","0")
+	}
+
+	$("i.icon-check").click(function(){
+		var val = parseInt($(this).attr("data-value"));
+		if (0 == val){
+			$(this).attr("data-value", "1").css("color", "#1DD34D").removeClass("icon_select_off").addClass("icon_select_on");
+		}else{
+			$(this).attr("data-value", "0").css("color", "#4F5356").removeClass("icon_select_on").addClass("icon_select_off");
+		}
+
+		var btn = $(this).attr("data-toggle-btn");
+		if (btn){
+			var $btn = $("#"+btn);
+			var bg = $btn.css("backgroundImage");
+
+			if (1 == val){
+				bg = bg.replace("button", "button_disable");
+				$btn.attr("disabled", "disabled").css("backgroundImage", bg);
+			}else{
+				bg = bg.replace("button_disable", "button");
+				$btn.removeAttr("disabled").css("backgroundImage", bg);
+			}
+		}
+	}).each(function(){
+		var val = $(this).attr("data-value") || 0;
+		if (1 == val){
+			$(this).attr("data-value", "1").css("color", "#1DD34D").removeClass("icon_select_off").addClass("icon_select_on");
+		}else{
+			$(this).attr("data-value", "0").css("color", "#4F5356").removeClass("icon_select_on").addClass("icon_select_off");
+		}
+
+		var btn = $(this).attr("data-toggle-btn");
+		if (btn){
+			var $btn = $("#"+btn);
+			var bg = $btn.css("backgroundImage");
+
+			if (0 == val){
+				bg = bg.replace("button", "button_disable");
+				$btn.attr("disabled", "disabled").css("backgroundImage", bg);
+			}else{
+				bg = bg.replace("button_disable", "button");
+				$btn.removeAttr("disabled").css("backgroundImage", bg);
+			}
+		}
+	});
+
+	var contentScroll = new NiceScroll("Main");
+	contentScroll.init();
+})();
+</script>
+<%
+	local para = {welcome = {config = {}}}
+	local result = tpl_get_data(para)
+-%>
+<%+language%>
+<div id="Main" class="guide center-container">
+	<div class="vertical-center">
+		<div class="center-logo"></div>
+		<p class="web-site">{%label.phicommWebSite%}</p>
+		<h1 class="router-name">
+			<span class="router">{%label.welcome%}</span>
+		</h1>
+		<div class="login-con">
+			<ul class="set-con">
+				<input id="Start" class="login-btn" type="button" value="{%btn.start%}" />
+			</ul>
+			<ul class="set-con">
+				<i class="tip-l icon-check" data-value='' data-toggle-btn="Start"></i>
+				<span class="desc-lbl">
+					{%label.readAndagree%}&nbsp;<a href="javascript:showUserAgreement();" class="user-agreement">{%label.theUserAgreement%}</a>
+				</span>
+			</ul>
+		</div>
+	</div>
+	<div class="bg-map"></div>
+</div>
+<%+footer-welcome%>

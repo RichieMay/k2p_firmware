@@ -1,0 +1,8 @@
+Package: arp_defence
+Version: 1
+Depends: libc, phicomm_libs, libuci
+Source: package/phicomm/arp_defence
+Section: Phicomm Properties
+Architecture: ramips_1004kc
+Installed-Size: 4541
+Description:  unknown

@@ -1,0 +1,146 @@
+<style type="text/css">div.welcome{margin:0 auto;text-align:center;margin-top:18%}i.router{display:inline-block;background:url(/luci-static/images/phiwifi.png?_=20180420151033) no-repeat;background-size:contain;width:4.72rem;height:4.27rem;margin-left:1.2rem}div.btn-con-2{margin:5% auto 0}ul.set-con2{text-align:center;margin:.933rem auto .25rem}span.desc-lbl{text-align:left;vertical-align:middle;font-size:.387rem;color:#575757}a.user-agreement{font-size:.375rem;color:#575757;text-decoration:underline}div.download-app{margin:.4rem auto .2rem;text-align:center}a.download-app{font-size:.347rem;color:#ff9919;text-decoration:underline}p.company{margin-bottom:.25rem;text-align:center;font-size:.32rem;color:#575757}</style>
+<script type="text/javascript">
+(function(){
+	function setLang(){
+		var data = {};
+		data.lang = ROUTER.lang;
+
+		apiSetWithUrl("/welcome/config", data, function(ret){});
+	}
+
+	setLang();
+
+	$("#AppURL").attr("href",ROUTER.appURL);
+
+	$("#Start").click(function(){
+		var data = {};
+		data.agreement = parseInt($("i.icon-check").attr("data-value"));
+		apiSetWithUrl("/welcome/config",data,function(){
+			stateman.emit("reset");
+		});
+	});
+
+	var webFeature = getWebFeature("guide");
+	var agreeGuide = webFeature.agreeGuide;
+
+	if (agreeGuide == 1){
+		$("i.icon-check").attr("data-value","1")
+	}else{
+		$("i.icon-check").attr("data-value","0")
+	}
+
+	$("i.icon-check").click(function(){
+		var val = parseInt($(this).attr("data-value"));
+		if (0 == val){
+			$(this).attr("data-value", "1").css("color", "#FF7900").removeClass("icon_select_off").addClass("icon_select_on");
+		}else{
+			$(this).attr("data-value", "0").css("color", "#575757").removeClass("icon_select_on").addClass("icon_select_off");
+		}
+
+		var btn = $(this).attr("data-toggle-btn");
+		if (btn){
+			if (1 == val){
+				$("#"+btn).attr("disabled", "disabled").addClass("disabled");
+			}else{
+				$("#"+btn).removeAttr("disabled").removeClass("disabled");
+			}
+		}
+	}).each(function(){
+		var val = $(this).attr("data-value") || 0;
+		if (1 == val){
+			$(this).attr("data-value", "1").css("color", "#FF7900").removeClass("icon_select_off").addClass("icon_select_on");
+		}else{
+			$(this).attr("data-value", "0").css("color", "#575757").removeClass("icon_select_on").addClass("icon_select_off");
+		}
+
+		var btn = $(this).attr("data-toggle-btn");
+		if (btn){
+			if (0 == val){
+				$("#"+btn).attr("disabled", "disabled").addClass("disabled");
+			}else{
+				$("#"+btn).removeAttr("disabled").removeClass("disabled");
+			}
+		}
+	});
+
+	if (ROUTER.languageList.length > 1){
+		$("#LangList").show();
+	}else{
+		$("#LangList").hide();
+	}
+
+	var curLang = ROUTER.lang;
+	var langListUsed = LANGLIST.getLangList();
+
+	initTool("LangList", langListUsed, curLang, function(val, init){
+		for (var i = 0; i < langListUsed.length; i++){
+			if (langListUsed[i]["value"] == val){
+				$("#Language").text(langListUsed[i]["name"]);
+				break;
+			}
+		}
+
+		if (!init){
+			var data = {};
+			data.lang = val;
+
+			apiSetWithUrl("/welcome/config", data, function(ret){
+				var code = ret[ERR_CODE];
+				if (E_NONE == code){
+					window.location.reload();
+				}else{
+					$.setTimeout(function(){
+						errHandle(code);
+					}, 800);
+				}
+			});
+		}
+	});
+
+	function errHandle(code){
+		switch(code){
+		case E_NONE:
+			return false;
+		default:
+			showNote(errStr.unknownErr + code);
+			break;
+		}
+
+		return true;
+	}
+})();
+</script>
+<%
+	local para = {welcome = {config = {}}}
+	local result = tpl_get_data(para)
+-%>
+<div class="head-con">
+	<h1 class="head-title">{%label.phicommRouter%}</h1>
+	<div class="switch-lang">
+		<span id="LangList" class="select" data-value="0">
+			<span class="select-value">English</span>
+		</span>
+	</div>
+</div>
+<div class="set-con below-head">
+	<div class="set-con">
+		<div class="welcome">
+			<i class="router"></i>
+		</div>
+		<ul class="set-con set-con2">
+			<i class="tip-l icon-check" data-value='' data-toggle-btn="Start"></i>
+			<span class="desc-lbl">
+				{%label.readAndagree%}&nbsp;<a href="#/userAgreement" class="user-agreement">{%label.theUserAgreement%}</a>
+			</span>
+		</ul>
+		<div class="btn-con btn-con-2">
+			<input id="Start" class="btn" type="button" value="{%btn.start%}" />
+		</div>
+		<div class="download-app invisible">
+			<a href="" id="AppURL" target="_blank" class="download-app">
+				<span>{%label.downloadApp%}</span>
+			</a>
+		</div>
+		<p class="company">{%label.phicommTechnologyCoLtd%}</p>
+	</div>
+</div>

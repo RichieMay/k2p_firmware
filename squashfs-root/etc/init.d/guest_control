@@ -1,0 +1,45 @@
+#!/bin/sh /etc/rc.common
+# Copyright (C) 2014 OpenWrt.org
+# 本来的实现方式会检查无线uci配置文件中是否打开访客网络来决定是否添加规则，由于这种方式APP管理存在bug，所以改为不管任何情况都添加规则。
+
+START=97
+
+start() {
+	lan_ip=`ifconfig br-lan |grep addr:|cut -f2 -d":"|cut -f1 -d" "`
+	guest_ifname=`cfg_phic -g ifname Guest`
+	b2d4g_ifname=`cfg_phic -g ifname 2.4G`
+	b5g_ifname=`cfg_phic -g ifname 5G`
+	lan_ifname=`uci get network.lan.ifname`
+
+	/usr/sbin/iptables -t filter -w -F guest_chain >/dev/null 2>&1
+	/usr/sbin/iptables -t filter -w -D INPUT -j guest_chain >/dev/null 2>&1
+	/usr/sbin/iptables -t filter -w -X guest_chain >/dev/null 2>&1
+
+	/usr/sbin/iptables -t filter -w -N guest_chain >/dev/null 2>&1
+	/usr/sbin/iptables -t filter -w -I INPUT -j guest_chain >/dev/null 2>&1
+	/usr/sbin/iptables -t filter -w -A guest_chain -m indev --indev-name $guest_ifname -d $lan_ip/24 -p tcp --dport 80 -j DROP >/dev/null 2>&1
+
+	/usr/sbin/ebtables -t filter -F guest_chain >/dev/null 2>&1
+	/usr/sbin/ebtables -t filter -D FORWARD -j guest_chain >/dev/null 2>&1
+	/usr/sbin/ebtables -t filter -X guest_chain >/dev/null 2>&1
+
+	/usr/sbin/ebtables -t filter -N guest_chain >/dev/null 2>&1
+	/usr/sbin/ebtables -t filter -P guest_chain RETURN 2>&1
+	/usr/sbin/ebtables -t filter -A FORWARD -j guest_chain >/dev/null 2>&1
+	/usr/sbin/ebtables -t filter -A guest_chain   -i $guest_ifname -o $b2d4g_ifname -j DROP >/dev/null 2>&1
+	/usr/sbin/ebtables -t filter -A guest_chain   -i $guest_ifname -o $b5g_ifname -j DROP >/dev/null 2>&1
+	/usr/sbin/ebtables -t filter -A guest_chain   -i $guest_ifname -o $lan_ifname -j DROP >/dev/null 2>&1
+	/usr/sbin/ebtables -t filter -A guest_chain   -i $b2d4g_ifname -o $guest_ifname -j DROP >/dev/null 2>&1
+	/usr/sbin/ebtables -t filter -A guest_chain   -i $b5g_ifname -o $guest_ifname -j DROP >/dev/null 2>&1
+	/usr/sbin/ebtables -t filter -A guest_chain   -i $lan_ifname -o $guest_ifname -j DROP >/dev/null 2>&1
+}
+
+stop() {
+	/usr/sbin/iptables -t filter -w -F guest_chain >/dev/null 2>&1
+	/usr/sbin/iptables -t filter -w -D INPUT -j guest_chain >/dev/null 2>&1
+	/usr/sbin/iptables -t filter -w -X guest_chain >/dev/null 2>&1
+
+	/usr/sbin/ebtables -t filter -F guest_chain >/dev/null 2>&1
+	/usr/sbin/ebtables -t filter -D FORWARD -j guest_chain >/dev/null 2>&1
+	/usr/sbin/ebtables -t filter -X guest_chain >/dev/null 2>&1
+}

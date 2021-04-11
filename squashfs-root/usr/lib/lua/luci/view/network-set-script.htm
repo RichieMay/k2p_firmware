@@ -1,0 +1,193 @@
+<script type="text/javascript">
+	function checkStaticConf(ip, mask, gateway){
+		var result = E_NONE;
+		if (E_NONE != (result = checkNetworkIp(ip))){
+			return result;
+		}
+
+		if (E_NONE != (result = checkNetworkMask(mask))){
+			return result;
+		}
+
+		if (E_NONE != (result = checkNetworkIpMask(ip, mask))){
+			return result;
+		}
+
+		if (E_NONE != (result = checkNetworkGateway(gateway, ip, mask))){
+			return result;
+		}
+
+		return result;
+	}
+
+	function checkNetworkIp(ip){
+		var err = checkIp(ip);
+		switch(err){
+		case E_BLANK:
+			return E_NETWORK_IP_BLANK;
+		case E_INVIPFMT:
+			return E_NETWORK_IP_FORMAT;
+		case E_INVIP:
+			return E_NETWORK_IP_ILLEGAL;
+		}
+		return E_NONE;
+	}
+
+	function checkNetworkMask(mask){
+		var err = checkMask(mask);
+		switch(err){
+		case E_BLANK:
+			return E_NETWORK_NETMASK_BLANK;
+		case E_INVMASKFMT:
+			return E_NETWORK_NETMASK_FORMAT;
+		case E_INVMASK:
+			return E_NETWORK_NETMASK_ILLEGAL;
+		}
+		return E_NONE;
+	}
+
+	function checkNetworkIpMask(ip, mask) {
+		var err = checkIpMask(ip, mask);
+
+		switch(err){
+		case E_INVNETID:
+			return E_NETWORK_NET_ILLEGAL;
+		case E_INVHOSTID:
+			return E_NETWORK_NETHOST_ILLEGAL;
+		}
+		return E_NONE;
+	}
+
+	function checkNetworkGateway(gateway, ip, mask){
+		var err = checkIp(gateway);
+		var result = E_NONE;
+		switch(err){
+		case E_BLANK:
+			return E_NETWORK_GATEWAY_BLANK;
+		case E_INVIPFMT:
+			return E_NETWORK_GATEWAY_FORMAT;
+		}
+
+		if (!checkSameNetwork(gateway, ip, mask)){
+			return E_NETWORK_IP_GATEWAY_NOTCOM;
+		}
+		if (gateway == ip){
+			return E_NETWORK_IP_GATEWAY_SAME;
+		}
+
+		return E_NONE;
+	}
+
+	function checkNetworkDns(primDns, secDns){
+		var err = checkIp(primDns);
+		switch(err){
+		case E_BLANK:
+			return E_NETWORK_DNSPRI_BLANK;
+		case E_INVIPFMT:
+			return E_NETWORK_DNSPRI_FORMAT;
+		case E_INVIP:
+			return E_NETWORK_DNSPRI_ILLEGAL;
+		}
+
+		err = checkIp(secDns);
+		switch(err){
+		case E_BLANK:
+			return E_NONE;
+		case E_INVIPFMT:
+			return E_NETWORK_DNSSEC_FORMAT;
+		case E_INVIP:
+			return E_NETWORK_DNSSEC_ILLEGAL;
+		}
+
+		if (primDns == secDns){
+			return E_NETWORK_DNSPRI_DNSSEC_SAME;
+		}
+
+		return E_NONE;
+	}
+	/*for PPPOE/PPTP/L2TP*/
+	function checkUserName(username, wanType){
+		var serverType = wanType.toUpperCase();
+		if (username == ""){
+			return eval("E_NETWORK_"+serverType+"_USERNAME_BLANK");
+		}
+
+		if (checkStrLen(username, 32, 1) != E_NONE){
+			return eval("E_NETWORK_"+serverType+"_USERNAME_LEN");
+		}
+
+		return E_NONE;
+	}
+
+	/*for PPPOE/PPTP/L2TP*/
+	function checkPassWord(password, wanType){
+		var serverType = wanType.toUpperCase();
+		var err = checkStrFormat(password);
+		switch(err){
+		case E_STRINGBLANK:
+			return eval("E_NETWORK_"+serverType+"_PWD_BLANK");
+		case E_STRINGFORMAT:
+			return eval("E_NETWORK_"+serverType+"_PWD_ILLEGAL");
+		}
+		if (checkStrLen(password, 32, 1)){
+			return eval("E_NETWORK_"+serverType+"_PWD_LEN");
+		}
+		return E_NONE;
+	}
+
+	/*for PPTP/L2TP*/
+	function checkServer(server, wanType){
+		var serverType = wanType.toUpperCase();
+		if("PPPOE" == serverType){
+			if(checkStrLen(server, 64, 0)){
+				return E_NETWORK_PPPOE_SERVER_LEN;
+			}else{
+				return E_NONE;
+			}
+		} else {
+			var err = checkDomainIp(server);
+			switch(err){
+			case E_BLANK:
+				return eval("E_NETWORK_"+serverType+"_SERVER_BLANK");
+			case E_DOMAINFORMAT:
+			case E_INVIPFMT:
+				return eval("E_NETWORK_"+serverType+"_SERVER_ILLEGAL");
+			case E_DOMAINLEN:
+				return eval("E_NETWORK_"+serverType+"_DOMAIN_ILLEGAL");
+			case E_INVIP:
+				return eval("E_NETWORK_"+serverType+"_IP_ILLEGAL");
+			}
+			return E_NONE;
+		}
+
+
+	}
+
+	/*for STATIC/DHCP/PPPOE/L2TP/PPTP*/
+	function checkNetworkMtu(mtu, min, max, wanType){
+		var serverType = wanType.toUpperCase();
+		var err = checkNumNew(mtu, min, max);
+		switch(err){
+		case E_BLANK:
+			return eval("E_NETWORK_"+serverType+"_MTU_BLANK");
+		case E_NUMFORMAT:
+			return eval("E_NETWORK_"+serverType+"_MTU_ILLEGAL");
+		case E_NUMRANGE:
+			return eval("E_NETWORK_"+serverType+"_MTU_RANGE");
+		}
+		return E_NONE;
+	}
+
+	function checkNetworkMac(mac){
+		var err = checkMac(mac);
+		switch(err){
+		case E_BLANK:
+			return E_MACCLONE_MAC_BLANK;
+		case E_INVMACFMT:
+			return E_MACCLONE_MAC_FORMAT;
+		case E_INVMAC:
+			return E_MACCLONE_MAC_ILLEGAL;
+		}
+		return E_NONE;
+	}
+</script>

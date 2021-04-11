@@ -1,0 +1,8 @@
+Package: device_manage
+Version: 1.0.0-1
+Depends: libc, libuci, phicomm_libs, libjson-c
+Source: package/phicomm/device_manage
+Section: Phicomm Properties
+Architecture: ramips_1004kc
+Installed-Size: 25801
+Description:  unknown

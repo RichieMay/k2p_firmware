@@ -1,0 +1,2 @@
+config filter 'url_switch'
+	option enabled '0'

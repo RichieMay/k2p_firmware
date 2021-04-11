@@ -1,0 +1,63 @@
+#!/bin/sh /etc/rc.common
+. /usr/share/libubox/jshn.sh
+
+START=99
+
+start() {
+	local enable
+	
+	config_load ccgame
+	config_get enable ccgame enable
+	
+	[ "$enable" = "1" ] && {
+		lua /usr/sbin/ccgame_daemon.lua
+	}
+}
+
+data_stat() {
+	local num_enable=$(uci -q get ccgame.stat.num_enable)
+	local num_fail=$(uci -q get ccgame.stat.num_fail)
+	local num_down=$(uci -q get ccgame.stat.num_down)
+	local file_data_collect="/tmp/ccgame_data_collect"
+	
+	[ -z "$num_enable" ] && num_enable=0
+	[ -z "$num_fail" ] && num_fail=0
+	[ -z "$num_down" ] && num_down=0
+	
+	num_enable=$(($num_enable + 1))
+	uci set ccgame.stat.num_enable=$num_enable
+	uci commit ccgame
+	
+	json_init
+	json_add_object "run_info"
+	json_add_string "num_enable" "$num_enable"
+	json_add_string "num_fail" "$num_fail"
+	json_add_string "num_down" "$num_down"
+	json_close_object
+	json_add_object "use_info"
+	json_add_string "on_today" "1"
+	json_add_string "on_have" "1"
+	json_close_object
+	
+	echo $(json_dump) > $file_data_collect
+	statistics_data_event --ccgame  $file_data_collect
+	rm -rf $file_data_collect
+}
+
+restart() {
+	local enable
+	
+	config_load ccgame
+	config_get enable ccgame enable
+	
+	pid_daemon=$(ps | grep 'ccgame_daemon.lua$' | awk '{print $1}')
+	[ -n "$pid_daemon" ] && kill -9 $pid_daemon
+	if [ "$enable" = "1" ]; then
+		data_stat
+		lua /usr/sbin/ccgame_daemon.lua
+	else
+		lua /usr/sbin/ccgame_daemon.lua 0 
+	fi
+}
+
+

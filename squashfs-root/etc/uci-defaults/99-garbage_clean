@@ -1,0 +1,8 @@
+#!/bin/sh
+cp -f /etc/passwd /tmp/mypasswd
+cp -f /etc/shadow /tmp/myshadow
+/usr/sbin/garbage_clean
+cp -f  /tmp/mypasswd /etc/passwd
+cp -f  /tmp/myshadow /etc/shadow
+cp -f /rom/etc/config/version /etc/config/version
+exit 0

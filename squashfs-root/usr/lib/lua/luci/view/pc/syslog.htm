@@ -1,0 +1,50 @@
+<style type="text/css">
+	ul.switch-bottom{
+		margin-bottom:30px;
+	}
+</style>
+
+<script type="text/javascript">
+(function(){
+	<%-
+log_txt=luci.util.exec("logread") or ""
+
+	-%>
+
+
+	
+})();
+</script>
+<div class="help hidden">
+	<ul class="help-content">
+		<li class="help-head">
+			<img class="app-icon" src="./luci-static/images/app-icon/tools.png" />
+			<span class="help-title">高级设置-查看日志</span>
+		</li>
+		<li class="summary">可查看系统日志</li>
+	</ul>
+</div>
+<div class="head-con">
+	<img class="app-icon" src="./luci-static/images/app-icon/tools.png" />
+	<a href="javascript:history.go(-1);" class="head-btn-l">
+		<i class="head-btn icon icon_back"></i>
+		<span class="head-title">高级设置-查看日志</span>
+
+	</a>
+</div>
+
+
+<div class="set-con below-head" style="margin:17px 6px 8px 0;">
+	<li >
+		<p class="set-con-desc" style="text-align: center">
+			<label class="tip-lbl">系统日志</label>
+		</p>
+
+<textarea  style="width: 90%;margin-left:50px;"  id="sip_content" rows="30" ><%=log_txt%></textarea>
+	</li>
+</div>
+
+
+
+
+

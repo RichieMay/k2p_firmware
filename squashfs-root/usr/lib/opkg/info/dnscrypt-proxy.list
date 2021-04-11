@@ -1,0 +1,4 @@
+/etc/config/dnscrypt-proxy
+/usr/share/dnscrypt-proxy/dnscrypt-resolvers.csv
+/usr/sbin/dnscrypt-proxy
+/etc/init.d/dnscrypt-proxy

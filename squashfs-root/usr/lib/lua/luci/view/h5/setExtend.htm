@@ -1,0 +1,143 @@
+<style type="text/css">div.btn-con{margin-top:2.134rem}</style>
+<script type="text/javascript">
+(function(){
+	<%
+		local para = {
+			dev_feature = {wifi_extend = {}}
+		}
+
+		local result = tpl_get_data(para)
+		local reboot_confirm = result[K_MODULE].dev_feature.wifi_extend.reboot_confirm
+	-%>
+	var reboot_confirm = <%=reboot_confirm%>;
+
+	var param = stateman.current.param;
+	var client = {};
+
+	for (var k in param){
+		var key = decodeURIComponent(k);
+		var val = decodeURIComponent(param[k]);
+		client[key] = val;
+	}
+
+	var keyType = client.safe_mode;
+	var tkipAes = client.encryption;
+	var bssid = client.bssid;
+
+	$("#ClientSsid").val(client.ssid);
+	if (keyType == "OPEN"){
+		$("#SetPwd").hide();
+	}else{
+		$("#SetPwd").show();
+	}
+
+	$("#Save").click(function(){
+		var data = {};
+		var para = {};
+		para.wisp = {};
+		para.wisp.config = data;
+		data.enable = "1";
+		data.band = client.band;
+		data.bssid = bssid;
+		data.ssid = client.ssid;
+		if (handleError(checkSsid(data.ssid))){
+			return;
+		}
+		data.safe_mode = keyType;
+		data.encryption = tkipAes;
+		if (data.safe_mode != "OPEN") {
+			data.password = $("#ExtendPwd").val();
+			if (handleError(checkPwd(data.password))){
+				return;
+			}
+		}
+
+		if(reboot_confirm){
+			showConfirm(label.openExtend, function(choose){
+				if (choose){
+					saveWisp(para);
+				}
+			});
+		}else{
+			saveWisp(para);
+		}
+	});
+
+	function saveWisp(para){
+		showLoading(label.saveOpenExtend);
+		apiSet(para, function(ret){
+			var code = ret[ERR_CODE];
+			handleError(code, showNote) ? closeLoading() : refreshWisp(ret);
+		});
+	}
+
+	function refreshWisp(ret){
+		if(reboot_confirm){
+			$.setTimeout(function(){
+				closeLoading();
+				stateman.go("wisp", {param:{"keyBack":1}});
+			}, ROUTER.time.reboot);
+		}else{
+			var time = ret[K_MODULE].wisp.config.wait_time;
+			$.setTimeout(function(){
+				closeLoading();
+				stateman.go("wisp", {param:{"keyBack":1}});
+			}, time * 1000);
+		}
+	}
+
+	function checkPwd(password){
+		var err = checkStrFormat(password);
+		switch(err){
+		case E_STRINGBLANK:
+			return E_WISP_PWD_BLANK;
+		case E_STRINGFORMAT:
+			return E_WISP_PWD_ILLEGAL;
+		}
+
+		if (checkStrLen(password, 63, 8) != E_NONE){
+			return E_WISP_PWD_LEN;
+		}
+
+		return E_NONE;
+	}
+
+	function checkSsid(ssid){
+		if("" == ssid){
+			return E_WISP_SSID_BLANK;
+		}
+
+		if (checkStrLen(ssid, 32, 1) != E_NONE){
+			return E_WISP_SSID_LEN;
+		}
+
+		return E_NONE;
+	}
+})();
+</script>
+<div class="head-con">
+	<a href="#/apList/?keyBack=1" class="head-btn-l"><i class="head-btn icon icon_back"></i></a>
+	<h1 class="head-title">{%label.confirmExtend%}</h1>
+</div>
+<div class="set-con below-head">
+	<ul class="blank-bg"></ul>
+	<ul class="set-con">
+		<label class="desc-lbl">{%label.networkName%}</label>
+		<li class="text-con">
+			<input id="ClientSsid" class="text hover" maxLength="15" value="" readonly />
+		</li>
+	</ul>
+	<ul class="set-con hidden" id="SetPwd">
+		<label class="desc-lbl">{%label.networkPwd%}</label>
+		<li class="text-con">
+			<input id="ExtendPwd" class="text hover" maxLength="64" value="" /><i class="tip icon-eye" data-value="0"></i>
+		</li>
+	</ul>
+	<div class="err-note hidden">
+		<i class="err-icon icon_remind_line"></i>
+		<p class="note-str"></p>
+	</div>
+	<div class="btn-con">
+		<input id="Save" class="btn" type="button" value="{%btn.startExtend%}" />
+	</div>
+</div>

@@ -1,0 +1,182 @@
+<style type="text/css">	
+#desc{
+		margin-top:15px;
+	}
+#Check{background-color:#1499e6}#NewSwVer{color:#F00;font-weight:bold}#UpgradeCon{margin-top:30px}
+p.upgrade-info{color:#767d82;font-size:14px;width:300px;margin:5px auto;}
+#NewSwLog{margin-top:10px}li.text-con-b{border-width:0;text-align:left;white-space:nowrap}li.text-con-b label.desc-lbl{border-right-width:0;text-align:left;margin-right:10px}input.time-input{border:1px solid #DDD;border-radius:4px;width:50px;color:#4f5356;padding:0 14px;vertical-align:middle;height:24px;font-size:15px;text-align:center}input.time-input:focus{border-color:#ffbe62}span.unit{font-size:14px;color:#4f5356;vertical-align:middle;margin:0 8px}li.text-auto{width:146px}li.text-con span.select-auto{width:118px;padding:0 14px}ul.sel-opts-ul{width:100%}span.time-to{display:inline-block;vertical-align:middle;line-height:28px;font-size:14px;color:#4f5356;padding-left:2px;padding-right:2px}li.option span{padding:0 6px}div.set-select-two{margin:0 auto;width:600px}</style>
+<%
+
+local mver=luci.util.exec("echo -n `uci get version.num.ver`") or ""
+if not nixio.fs.access("/tmp/checkinfo") then
+ recstr="4,1"
+else
+ local minfo=luci.util.exec("cat /tmp/checkinfo") 
+ if minfo== "" then
+  recstr="3,无法连接升级服务器，请检查网络是否正确！"
+ else
+
+mmode=luci.util.exec("echo -n '" .. minfo .. "' |awk -F',' '{print $1}'")
+mmode=mmode:gsub("\n", "")
+mstr=luci.util.exec("echo -n '" .. minfo .. "' |awk -F',' '{print $2}'")
+mstr=mstr:gsub("\n", "")
+mstr2=luci.util.exec("echo -n '" .. minfo .. "' |awk -F',' '{print $3}'")
+mstr2=mstr2:gsub("\n", "")
+mstr3=luci.util.exec("echo -n '" .. minfo .. "' |awk -F',' '{print $4}'")
+mstr3=mstr3:gsub("\n", "")
+  if mmode == "3" then
+   recstr="3," .. mstr
+    else
+   if mstr == mver then
+        recstr="0,0," .. mstr2 .."," .. mstr3
+      else
+       recstr=minfo   
+       luci.sys.call("cp -f /tmp/checkinfo /tmp/upinfo")
+      end
+  end
+ end
+end
+
+luci.sys.call("rm -f /tmp/checkinfo")
+-%>
+<script type="text/javascript">
+(function(){
+
+	$("#CurSwVer").val('<%=mver%>');
+	var recstr='<%=recstr%>';
+	var sys=recstr.split(",");
+	var upmode=sys[0];
+
+	if(upmode == "1")
+	{
+	  $("#NewSwVer").val(sys[1]);
+	  $("#RealeaseTime").html(sys[2]);
+ 	 $("#NewSwLog").html(sys[3]);
+	  $("#UpgradeCon").show();
+	 $("#Upgrade").show();
+	 $("#Check").val("重新检查");
+	}
+	else if(upmode == "2")
+	{
+  	 $("#NewSwVer").val(sys[1]);
+ 	 if(sys[1]!="0")
+  	 showAlert(label.upgradeFailed);
+	}
+	else if(upmode == "3")
+	{
+  	 alert(sys[1]);
+	}
+	else if(upmode == "0")
+	{
+ 	 $("#NewSwVer").val("当前定制固件是最新版本");
+        $("#RealeaseTime").html(sys[2]);
+ 	 $("#NewSwLog").html(sys[3]);
+	 $("#Upgrade").hide();
+        $("#UpgradeCon").show();
+
+	}
+
+	$("#Check").click(function(){
+		$("#UpgradeCon").hide();
+		closeNote();
+		//showLoading(label.upgradeChecking);
+
+			var data = {};
+			var para = {};
+
+			para.tools = {};
+			para.tools.config = data; 
+			data.value = "";
+			data.index = 5;
+			
+			showLoading("正在检查更新，请稍候..");
+			apiSet(para, function (ret) {
+				$.setTimeout(function () {
+					closeLoading();
+					window.location.reload();
+				}, 3000);
+			});
+		$(".inside-circle").hide();
+		//$("#NewSwVer").val(label.swIsNewest);
+		//$("#UpgradeCon").hide();
+		//closeLoading();
+		$("#Check").val(btn.reCheckUpdate);
+	});
+
+	$("#Upgrade").click(function(){
+			var data = {};
+			var para = {};
+
+			para.tools = {};
+			para.tools.config = data; 
+			data.value = "";
+			data.index = 6;
+			
+			apiSet(para, function (ret) {
+			});
+			showProgressBar(label.upgrading, label.upgradingTips, 150000, function(){
+						window.location.reload();
+			});
+	});
+
+
+})();
+</script>
+
+<div class="help hidden">
+	<ul class="help-content">
+		<li class="help-head">
+			<img class="app-icon" src="/luci-static/images/app-icon/upgrade.png?_=20170822124504" />
+			<span class="help-title">{%label.autoUpgrade%}</span>
+		</li>
+		<li class="summary">{%helpStr.autoUpgrade%}</li>
+		<li class="summary">{%helpStr.autoUpgradeTip%}</li>
+	</ul>
+</div>
+<div class="head-con">
+	<img class="app-icon" src="/luci-static/images/app-icon/upgrade.png?_=20170822124504" />
+	<a href="javascript:history.go(-1);" class="head-btn-l">
+		<i class="head-btn icon icon_back"></i>
+		<span class="head-title">{%label.autoUpgrade%}</span>
+	</a>
+</div>
+<div class="set-con below-head">
+
+	<div id="OnlineUpgrade" >
+		<div class="btn-con">
+			<input id="Check" class="btn" type="button" value="检测定制固件版本" />
+		</div>
+		<ul class="set-con">
+			<li class="text-con">
+				<label class="desc-lbl">当前定制版本</label>
+				<input id="CurSwVer" class="text" value="" readonly />
+			</li>
+		</ul>
+		<ul class="set-con">
+			<li class="text-con">
+				<label class="desc-lbl">最新定制版本</label>
+				<input id="NewSwVer" class="text" value="" readonly />
+			</li>
+		</ul>
+		<div class="err-note hidden">
+			<i class="err-icon icon_remind_line"></i>
+			<p class="note-str"></p>
+		</div>
+		<div id="UpgradeCon" class="hidden btn-con" >
+			<li class="text-con" style="text-align:left;">
+<div style="float:right;width:262px;">
+			<p class="upgrade-info"><span>{%label.realeaseTime%}{%label.colon%}</span><span id="RealeaseTime"></span></p>
+			<p class="upgrade-info" id="desc"><span>{%label.realeaseLog%}{%label.colon%}</span></p>
+			<p class="upgrade-info" id="NewSwLog"></p>
+			</li>
+</div>
+
+		</div>
+		<div class="btn-con">
+			<input id="Upgrade" class="btn hidden "  type="button" value="在线升级" />
+		</div>
+	</div>
+</div>
+
+
+

@@ -1,0 +1,264 @@
+<style type="text/css">div.device-list{background-color:#FFF;margin-top:4.214rem!important}a.list-item{text-decoration:none}li.list-item{font-size:0;height:1.6rem;overflow:hidden}div.left-con{float:left}i.verdor-icon{font-size:1.4rem;display:inline-block;height:1.6rem;line-height:1.6rem}div.right-con{float:right;width:80%;height:1.58rem;border-bottom:1px solid #DDD}p.list-con-l{font-size:0;float:left;margin-top:.3rem;width:5rem}p.list-con-r{color:#949494;font-size:.308rem;float:right;max-width:2rem;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;text-align:right}p.list-con-r::before{content:"\A";white-space:pre}span.speed-limit{margin-top:-0.1rem;font-size:.308rem;vertical-align:top;text-align:right;float:right;color:#017ce6;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;width:2rem}span.list-con1{color:#575757;font-size:.347rem;display:inline-block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;width:5rem}span.dev-name{width:3.6rem}span.self{margin-top:0;font-size:.293rem;vertical-align:top;text-align:left;float:right;color:#fe8f19;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;width:1.4rem}span.time{display:inline-block;width:2.5rem;color:#585858;margin-top:.55rem;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;width:2rem}span.list-con1::after{content:"\A";white-space:pre}span.list-con2{color:#949494;font-size:.293rem;margin-top:-0.15rem}span.speed-con{display:inline-block;width:2.5rem}span.speed-con i{margin-left:-0.3rem}.icon_speed_up{color:#1499e6;font-size:1rem}.icon_speed{color:#1fb66f;font-size:1rem}span.mac{margin-left:.2rem}div.speed-bg{position:fixed;color:#fff;width:100%;height:3.014rem;top:1.2rem;background-color:#FFF;z-index:100}div.net-speed{position:relative;color:#fff;height:2.4rem;margin:.307rem .333rem;background:url(/luci-static/images/speed_bg.png?_=20180420151033) no-repeat;background-size:100% 100%}div.speed-state{float:left;width:50%;position:relative}div.speed-state i.icon{left:0;margin-top:0;color:#FFF;font-size:.8rem;display:inline-block;position:absolute}div.speed-num{right:.8rem;top:.844rem;font-size:.875rem;position:absolute;font-family:icoset}span.speed-size{font-size:.309rem}span.speed-tip{font-size:.292rem;display:inherit;margin-left:.9rem;margin-top:.2rem}span.speed-note{display:inline-block;position:absolute;margin-top:.35rem;margin-left:-0.2rem}ul.list{padding:0 .347rem}span.mac-tip{display:inline-block;margin-top:.25rem;font-size:.308rem}</style>
+<script type="text/javascript">
+(function(){
+	<%
+		local dev_para = {
+			dev_feature = {app_h5 = {}}
+		}
+		local dev_result = tpl_get_data(dev_para)
+		local h5_installed = dev_result[K_MODULE].dev_feature.app_h5.installed
+		local white_list_support = "0"
+		local i
+		for i = 0, #h5_installed do
+			if "white-list" == h5_installed[i] then
+				white_list_support = "1"
+			end
+		end
+
+		local para = {device_manage = {client_list = {}}}
+		if "1" == white_list_support then
+			local white_list = {}
+			white_list["config"] = {}
+			para["white_list"] = white_list
+		end
+		local result = tpl_get_data(para, true)
+
+		local remote_ip = luci.http.getenv("REMOTE_ADDR")
+	-%>
+
+	var info = <%=result%>;
+	var curIp = "<%=remote_ip%>";
+	var clients = info[K_MODULE].device_manage.client_list;
+	var currentState = stateman.current.name;
+	var whiteListSupport = "<%=white_list_support%>";
+
+	var whiteListEnable = "whiteListEnable=0";
+	if("1" == whiteListSupport){
+		whiteListEnable = "whiteListEnable=" + info[K_MODULE].white_list.config.enable;
+	}
+
+	function JSON2UriParam(data){
+		return $.param(data).replace(/\+/g, '%20');
+	}
+
+	function speedSplit(speed){
+		var kSpeed = 1024;
+		var mSpeed = kSpeed * 1024;
+		var gSpeed = mSpeed * 1024;
+
+		speed = parseInt(speed, 10);
+		if (speed >= gSpeed){
+			num = (speed/gSpeed).toFixed(0);
+			unit = "GB/s";
+		}
+		else if (speed >= mSpeed){
+			num = (speed/mSpeed).toFixed(0);
+			unit = "MB/s";
+		}
+		else if (speed >= kSpeed){
+			num = (speed/kSpeed).toFixed(0);
+			unit = "KB/s";
+		}
+		else{
+			num = speed.toFixed(0);
+			unit = "B/s";
+		}
+
+		return [num, unit];
+	}
+
+	function speedUnit(speed){
+		var info = speedSplit(speed);
+		return info[1];
+	}
+
+	function speedNum(speed){
+		var info = speedSplit(speed);
+		return info[0];
+	}
+
+	function initOnlineEntry(client){
+		var param = JSON2UriParam(client);
+		var vendor;
+		if(client.brand){
+			vendor = "icon_" + getAlias(client.brand);
+		}else{
+			vendor = "icon_" + getVendor(client.mac);
+		}
+		var devName = htmlEscape(client.name);
+		var uRate = netSpeedTrans(client.upload_speed);
+		var dRate = netSpeedTrans(client.download_speed);
+		var timeStr = timeTrans(client.online_time);
+		var rightConStr = "";
+		var selfHost = "";
+
+		if (client.ip == curIp){
+			selfHost = '{%label.selfHost%}';
+		}
+
+		if (0 != client.upload_limit || 0 != client.download_limit){
+			rightConStr += '{%label.limitSpeed%}';
+		}
+
+		if (!(0 <= parseInt(client.upload_speed) && 0 <= parseInt(client.download_speed)))
+		{
+			uRate = dRate = "----";
+		}
+
+		/*
+		if (0 == client.device_type){	// 暂不支持有线设备上下行速率的统计
+			uRate = dRate = "----";
+		}
+		*/
+
+		return '<a href="#/editClient/?keyBack=1&' + param + '&' + whiteListEnable + '" class="list-item"><li class="list-item">' +
+			'<div class="left-con"><i class="verdor-icon ' + vendor + '"></i></div>' +
+			'<div class="right-con">' +
+				'<p class="list-con-l">' +
+					'<span class="list-con1 dev-name">' + devName + '</span>'+
+					'<span class="self">' + selfHost + '</span>'+
+					'<span class="list-con2 speed-con"><i class="icon_speed_up"></i><span class="speed-note">' + uRate + '</span></span>' +
+					'<span class="list-con2 speed-con"><i class="icon_speed"></i><span class="speed-note">' + dRate + '</span></span>' +
+				'</p>' +
+				'<p class="list-con-r">' + '<span class="speed-limit">' + rightConStr + '</span>'+
+					'<span class="time">' + timeStr + '</span>'+
+				'</p>' +
+			'</div>' +
+		'</li></a>';
+	}
+
+	function initForbidEntry(client){
+		var param = JSON2UriParam(client);
+		var vendor;
+		if(client.brand){
+			vendor = "icon_" + getAlias(client.brand);
+		}else{
+			vendor = "icon_" + getVendor(client.mac);
+		}
+		var devName = htmlEscape(client.name, 16);
+
+		return '<a href="#/editClient/?keyBack=1&' + param + '&' + whiteListEnable + '" class="list-item"><li class="list-item">' +
+			'<div class="left-con"><i class="verdor-icon ' + vendor + '"></i></div>' +
+			'<div class="right-con">' +
+				'<p class="list-con-l">' +
+					'<span class="list-con1">' + devName + '</span>'+
+					'<span class="list-con2 mac-tip">{%label.mac%}<span class="mac">' + client.mac + '</span></span>' +
+				'</p>' +
+			'</div>' +
+		'</li></a>';
+	}
+
+	var onlineListObj = $("#onlineList");
+	var offlineListObj = $("#offlineList");
+	var forbidListObj = $("#forbidList");
+	var forbidTitleObj = $("#ForbidTitle");
+	var offlineTitle = $("#OfflineTitle");
+
+	function initList(clients){
+		onlineListObj.empty();
+		offlineListObj.empty();
+		forbidListObj.empty();
+		forbidTitleObj.hide();
+		offlineTitle.hide();
+
+		var len = clients.length;
+		for (var i = 0; i < len; i++){
+			if (0 == clients[i].internet_enable) {
+				forbidTitleObj.show();
+				forbidListObj.append(initForbidEntry(clients[i]));
+			}else{
+				if (1== clients[i].online_status){
+					onlineListObj.append(initOnlineEntry(clients[i]));
+				}else{
+					offlineTitle.show();
+					offlineListObj.append(initForbidEntry(clients[i]));
+				}
+			}
+		}
+	}
+
+	function refreshDevList(){
+		var data = {
+			device_manage:{client_list:null},
+			network:{"wan_status":null}
+		};
+
+		apiGet(data, function(result){
+			if (currentState != stateman.current.name){
+				return;
+			}
+
+			var errNo = result[ERR_CODE];
+
+			if (E_NONE == errNo){
+				ret = result[K_MODULE];
+				clients = result[K_MODULE]["device_manage"]["client_list"];
+				initList(clients);
+			}else{
+				console.log(result);
+			}
+
+			var internetStatus = ret.network.wan_status;
+			if ("0" == internetStatus.internet_status){
+				//不能上网
+				$("#UpSpeed").text("----");
+				$("#DownSpeed").text("----");
+				$("#UpUnit").hide();
+				$("#DownUnit").hide();
+			}else{
+				$("#UpSpeed").text(speedNum(internetStatus.upload_speed));
+				$("#DownSpeed").text(speedNum(internetStatus.download_speed));
+				$("#UpUnit").text(speedUnit(internetStatus.upload_speed)).show();
+				$("#DownUnit").text(speedUnit(internetStatus.download_speed)).show();
+			}
+
+			$.setTimeout(refreshDevList, 1000);
+		});
+	}
+
+	initList(clients);
+	$.setTimeout(refreshDevList, 1000);
+	$("#PageTitle").text(label.devManage);
+})();
+</script>
+<div class="speed-bg" id="NetSpeed">
+	<div class="net-speed" id="NetSpeed">
+		<div class="speed-state">
+		<i class="icon icon_speed_up"></i>
+		<span class="speed-tip">{%label.upSpeed%}</span>
+		<div class="speed-num">
+			<span id="UpSpeed">0</span>
+			<span class="speed-size" id="UpUnit">KB/S</span>
+		</div>
+		</div>
+        <div class="speed-state">
+		<i class="icon icon_speed"></i>
+		<span class="speed-tip">{%label.downSpeed%}</span>
+		<div class="speed-num">
+			<span id="DownSpeed">0</span>
+			<span class="speed-size" id="DownUnit">KB/S</span>
+		</div>
+		</div>
+	</div>
+</div>
+<div class="device-list below-head">
+	<ul class="blank-bg"></ul>
+	<ul class="set-con-title" id="OnlineTitle">
+		<label class="title-desc-lbl" id="WifiName">{%label.onlineClient%}</label>
+	</ul>
+	<ul id="onlineList" class="list"></ul>
+	<div id="OfflineTitle">
+		<ul class="blank-bg"></ul>
+		<ul class="set-con-title">
+			<label class="title-desc-lbl" id="WifiName">{%label.offlineClient%}</label>
+		</ul>
+		<ul id="offlineList" class="list"></ul>
+	</div>
+	<div id="ForbidTitle">
+		<ul class="blank-bg"></ul>
+		<ul class="set-con-title">
+			<label class="title-desc-lbl" id="WifiName">{%label.forbidClient%}</label>
+		</ul>
+		<ul id="forbidList" class="list"></ul>
+	</div>
+</div>

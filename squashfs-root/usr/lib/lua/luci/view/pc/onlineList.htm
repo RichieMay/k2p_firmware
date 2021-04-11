@@ -1,0 +1,154 @@
+<style type="text/css">div.online-list{width:300px;height:320px;overflow:hidden;border-radius:5px;background-color:#FFF;margin:210px auto;position:relative}i.close-btn{top:7px;right:10px}ul.list-con{font-size:0;width:100%;height:200px;text-align:left}li.app-item{width:90px;height:100%;display:inline-block;text-align:center;vertical-align:middle;position:relative;cursor:pointer}li.app-item .app-icon{width:62px;height:57px;margin:10px auto}li.app-item .app-select{width:26px;height:26px;position:absolute;top:6px;right:3px;display:none}li.app-item p{color:#414146;font-size:14px;margin-top:12px}.list-height{height:50px;line-height:50px;border-bottom:1px solid #e7e7e7}.online-device{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left;vertical-align:middle;margin-left:18px}span.icon-body{display:inline-block;width:70px}i.state-icon{float:right;font-size:30px;line-height:0;margin-right:10px}i.vendor{font-size:40px;display:inline-block;width:40px;height:40px;margin-right:10px;vertical-align:middle}span.text{font-size:14px;color:#4f5356;width:160px;line-height:40px;display:inline-block;vertical-align:middle;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}div.add-list-btn{margin:10px auto}input.add-btn-width{width:260px;margin-top:5px;margin-left:0}.uncheck-gray{color:#bfbfbf;cursor:pointer}.check-orange{color:#fe9818;cursor:pointer}span.self-host{color:#0084ff}.device-null{width:100%;height:156px}.device-null-img{width:200px;height:120px;margin:auto;margin-top:44px;background:url(/luci-static/images/device_empty.png?_=20180420151033) no-repeat;background-size:contain}p.device-null-tip{font-size:14px;color:#919395;text-align:center}</style>
+<script type="text/javascript">
+(function(){
+	<%
+		local para = {
+			device_manage = {client_list = {}}
+		}
+
+		local data = tpl_get_data(para, true)
+		local remote_ip = luci.http.getenv("REMOTE_ADDR")
+	-%>
+	var whiteLists = [];
+
+	var val = sessionLS.getItem("whiteListMac") || "{}";
+	var maclist = JSON.parse(val);
+
+	for (var k in maclist){
+		var val = maclist[k];
+		whiteLists.push(val);
+	}
+
+	var info = <%=data%>;
+	var curIp = "<%=remote_ip%>";
+	var deviceLists = info[K_MODULE].device_manage.client_list;
+
+	function initOnlineListEntry(client, idx){
+		var devName = htmlEscape(client.name);
+		var icon;
+		if(client.brand){
+			icon = "icon_" + getAlias(client.brand);
+		}else{
+			icon = "icon_" + getVendor(client.mac);
+		}
+
+		var buttonCon;
+		if (curIp == client.ip){
+			buttonCon = '<span class="self-host text check-orange data-check="1" data-index="' + client.mac +'"">{%label.selfHost%}</span>';
+		}else{
+			buttonCon = '<span class="icon-body"><i class="state-icon icon_select_on uncheck-gray" data-check="0" data-index="' + client.mac +'"></i></span>';
+		}
+
+		return '<li class="list-height" data-index="' + client.mac +'">' +
+					'<div class="online-device">' +
+						'<i class="vendor ' + icon + '"></i>' +
+						'<span class="text " title="' + devName + '">' + devName + '</span>' +
+						buttonCon +
+					'</div>' +
+				'</li>';
+	}
+
+	function initOnlineList(list){
+		var len = list.length;
+		var flag = 0;
+		for (var i = 0; i < len; i++){
+			if (0== list[i].internet_enable){
+				// Don't show offline client
+				continue;
+			}
+
+			for(var j = 0; j < whiteLists.length; j++){
+				if(list[i].mac == whiteLists[j]){
+					// Don't show whitelist client
+					flag = 1;
+					break;
+				}else{
+					flag = 0;
+				}
+			}
+
+			if ((1 == list[i].device_type || 2 == list[i].device_type) && flag == 0){
+				$("#OnlineList").append(initOnlineListEntry(list[i], i));
+			}
+		}
+
+		if ($("#OnlineList li").length == 0){
+			$("#OnlineList").hide();
+			$("#DeviceNull").show();
+			$("#DeviceNullTip").text(label.noneEnableDevice);
+		}else{
+			$("#OnlineList").show();
+			$("#DeviceNull").hide();
+		}
+	}
+
+	initOnlineList(deviceLists);
+
+	initCheck(".uncheck-gray");
+
+	function initCheck(filter, callback){
+		$(filter).each(function(){
+			var state = $(this).attr("data-check");
+			if (1 == state){
+				$(this).attr("data-value", "1").addClass("check-orange").removeClass("uncheck-gray");
+			}else{
+				$(this).attr("data-value", "0").removeClass("check-orange").addClass("uncheck-gray");
+			}
+		}).click(function(){
+			var state = $(this).attr("data-value");
+
+			if (0 == state){
+				$(this).attr("data-value", "1").addClass("check-orange").removeClass("uncheck-gray");
+				callback && callback(1, false);
+			}else{
+				$(this).attr("data-value", "0").removeClass("check-orange").addClass("uncheck-gray");
+				callback && callback(0, false);
+			}
+		});
+	};
+
+	$("#AddToList").click(function(){
+		var para = {};
+		para.addList = [];
+
+		var data = [];
+
+		$(".check-orange").each(function(index, item){
+			var val = $(item).attr("data-index");
+			data.push(val);
+		})
+
+		var setValue = {};
+
+		for(var i = 0; i < data.length; i++){
+			setValue[i] = data[i];
+		}
+
+		sessionLS.removeItem("addItemMac");
+		var macToString = JSON.stringify(setValue);
+		sessionLS.setItem("addItemMac", macToString);
+
+		$("#WhiteListAdd", parent.document).click();
+
+		$(".close-btn").click();
+	});
+
+	var contentScroll = new NiceScroll("OnlineList");
+	contentScroll.scrollBarSet({zIndex:1101});
+	contentScroll.init();
+})();
+</script>
+<div class="online-list">
+	<p class="alert-title">{%label.onlineList%}</p>
+	<i class="tip icon_close color-red close-btn"></i>
+	<div class="set-con">
+		<ul id="OnlineList" class="list-con"></ul>
+		<div id="DeviceNull" class="device-null hidden">
+			<div class="device-null-img"></div>
+			<p id="DeviceNullTip" class="device-null-tip"></p>
+		</div>
+		<div class="btn-con add-list-btn">
+			<input id="AddToList" class="btn btn-width add-btn-width" type="button" value="{%btn.addToWhiteList%}" />
+		</div>
+	</div>
+</div>

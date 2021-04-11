@@ -1,0 +1,3 @@
+/etc/init.d/sleep_timer
+/etc/config/sleep_timer
+/usr/bin/sleep_timer

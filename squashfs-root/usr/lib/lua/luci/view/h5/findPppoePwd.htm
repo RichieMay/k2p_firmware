@@ -1,0 +1,161 @@
+<style type="text/css">div.find-failed{text-align:center;position:relative;margin:2.5rem auto 1rem;overflow:hidden}i.failed-pic{display:inline-block;background:url(/luci-static/images/pic-null.png?_=20180420151033) no-repeat;background-size:contain;width:3.4rem;height:2.3rem}#PppoeMessage{display:none}div.find-result{margin-top:.5rem;margin-bottom:.306rem}p.result-str{font-size:.387rem;color:#f13f3f;text-align:center}p.find-success{color:#ff7800}#Save{background-color:#fe8f19}</style>
+<%+network-set-script%>
+<script>
+(function(){
+	var param = window.sessionStorage;
+	var status = {};
+	for (var k in param){
+		var val = sessionLS.getItem(k);
+		status[k] = val;
+	}
+
+	var curStatus = status["find_success"];
+	if ("1" == curStatus){
+		findSuccess();
+	}else{
+		findFailed();
+	}
+
+	function findSuccess(){
+		var username = status["user"];
+		var	password = status["password"];
+
+		$("#PppoeUser").val(username);
+		$("#PppoePwd").val(password);
+		$("#PppoeMessage").show();
+		$(".find-failed").hide();
+		$(".find-result").show();
+		$(".result-str").html("{%label.findSuccess%}").addClass("find-success");
+		$("#Save").val("{%btn.nextStep%}");
+	}
+
+	function findFailed(){
+		$(".pppoe-message").css('visibility','hidden');
+		$(".find-pwd").addClass("pic-null-bg");
+		$(".find-result").show();
+		$(".result-str").html("{%label.findFailed%}").removeClass("find-success");
+		$("#Save").val("{%btn.retryPwdFind%}");
+	}
+
+	$("#Back").click(function(){
+		stateman.go("guideNetworkSet");
+	});
+
+	function retryFindPwd(){
+		showLoading(label.findingPppoePwd);
+		$(".find-result").hide();
+		$(".err-note").hide();
+
+		var para = {
+			find_pwd:{config:null}
+		};
+
+		apiGet(para, function(result){
+			closeLoading();
+			var errNo = result[ERR_CODE];
+			if (E_NONE == errNo){
+				ret = result[K_MODULE];
+			}else{
+				console.log(result);
+				return;
+			}
+
+			var data = ret.find_pwd.config;
+
+			var setValue = {};
+			setValue.find_success = data.find_success;
+			setValue.user = data.user;
+			setValue.password = data.password;
+			for (var k in setValue){
+				sessionLS.setItem(k, setValue[k]);
+			}
+			stateman.go("findPppoePwd");
+		});
+	}
+
+	function showError(errTip){
+		$(".find-result").hide();
+		showNote(errTip);
+	}
+
+	function savePppoe(){
+		var wanConf = {};
+		var data = {};
+		var para = {};
+
+		para.network = {};
+		para.network.wan = wanConf;
+		wanConf.protocol = 'pppoe';
+		para.network.pppoe = data;
+		data.username = $("#PppoeUser").val();
+		data.password = $("#PppoePwd").val();
+		var checkType = "pppoe";
+
+		if (handleError(checkUserName(data.username, checkType), showError)){
+			return;
+		}
+
+		if (handleError(checkPassWord(data.password, checkType), showError)){
+			return;
+		}
+
+		showLoading(label.saving);
+		apiSet(para, function(ret){
+			var code = ret[ERR_CODE];
+			if (E_NONE == code){
+				var time = max(ret[K_MODULE].network.wan.wait_time, ret[K_MODULE].network.pppoe.wait_time);
+				$.setTimeout(function(){
+					stateman.go("guideWifiSet");
+				}, time * 1000);
+			}else{
+				handleError(code, showError);
+				closeLoading();
+			}
+		});
+	}
+
+	$("#Save").click(function(){
+		if (1 == curStatus){
+			savePppoe();
+		}else{
+			retryFindPwd();
+		}
+	});
+})();
+</script>
+<div class="head-con">
+	<h1 class="head-title">{%label.findPwd%}</h1>
+</div>
+<div class="set-con below-head">
+	<div class="find-failed">
+		<i class="failed-pic"></i>
+		<i class="break-icon icon_error hidden"></i>
+	</div>
+	<div id="PppoeMessage">
+		<ul class="blank-bg"></ul>
+		<ul class="set-con">
+			<label class="desc-lbl">{%label.pppoeUser%}</label>
+			<li class="text-con">
+				<input id="PppoeUser" class="text" maxLength="32" value="" />
+			</li>
+		</ul>
+		<ul class="set-con">
+			<label class="desc-lbl">{%label.wifiPwd%}</label>
+			<li class="text-con">
+				<input id="PppoePwd" class="text" maxLength="32" value="" />
+			</li>
+		</ul>
+		<ul class="blank-bg"></ul>
+	</div>
+	<div class="find-result">
+		<p class="result-str"></p>
+	</div>
+	<div class="err-note hidden">
+		<i class="err-icon icon_remind_line"></i>
+		<p class="note-str"></p>
+	</div>
+	<div class="btn-con">
+		<input id="Back" class="btn btn-left" type="button" value="{%btn.back%}" />
+		<input id="Save" class="btn btn-right" type="button" value="{%btn.nextStep%}" />
+	</div>
+</div>

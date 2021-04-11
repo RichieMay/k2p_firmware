@@ -1,0 +1,17 @@
+#!/bin/sh
+
+
+if [ "$ACTION" = "ifdown" ] && [ "$INTERFACE" = "wan" ]; then
+	#sleep 3 等待网络状态稳定
+	sleep 4
+	if [ "`ubus call rth.inet get_inet_link | grep "inet_link" | awk -F '"' '{print $4}'`" = "down" ]; then
+		uci set system.system.isp=""
+		uci set system.system.region=""
+		uci commit system
+	fi
+elif [ "$ACTION" = "ifup" ] && [ "$INTERFACE" = "wan" ]; then
+	if [ "`ubus call rth.inet get_inet_link | grep "inet_link" | awk -F '"' '{print $4}'`" = "up" ]; then
+		. /usr/lib/sys_stat/sys_stat.sh
+	fi
+fi
+

@@ -1,0 +1,5 @@
+/etc/init.d/sys_stat
+/usr/lib/sys_stat/sys_stat.sh
+/usr/bin/sys_stat
+/etc/hotplug.d/iface/85-stat
+/etc/uci-defaults/sys_stat

@@ -1,0 +1,11 @@
+#!/bin/bash
+
+grep 'datStatus' /etc/wireless/mt7615e/mt7615e.1.2G.dat >/dev/null 2>&1
+if [ $? -eq 1 ]; then
+	echo "datStatus=" >> /etc/wireless/mt7615e/mt7615e.1.2G.dat
+fi
+grep 'datStatus' /etc/wireless/mt7615e/mt7615e.1.5G.dat >/dev/null 2>&1
+if [ $? -eq 1 ]; then
+	echo "datStatus=" >> /etc/wireless/mt7615e/mt7615e.1.5G.dat
+fi
+

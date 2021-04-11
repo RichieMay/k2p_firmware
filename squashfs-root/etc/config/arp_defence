@@ -1,0 +1,10 @@
+config arp 'arp_defence'
+	option enable 0
+
+config arp 'arplimit'
+	option enable 0
+	option arplimit_num 20
+
+config arp 'anti_cheat'
+	option enable 0
+	option garp_interval_time 2

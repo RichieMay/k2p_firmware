@@ -1,0 +1,186 @@
+<script type="text/javascript">
+(function(){
+	<%
+		local para = {
+			ddns = {config = {}},
+			dev_feature = {ddns = {}}
+		}
+
+		local data = tpl_get_data(para, true)
+	-%>
+
+	var ddnsInfo = <%=data%>;
+
+	function init(result){
+		var errNo = result[ERR_CODE];
+		var ret;
+		if (E_NONE == errNo){
+			ret = result[K_MODULE];
+		}else{
+			console.log(result);
+			return;
+		}
+
+		var ddns = ret.ddns.config;
+		initSwitch("Switch", ddns.enable, function(state){
+			if (1 == state){
+				$("#Param").show();
+			}else{
+				$("#Param").hide();
+			}
+		});
+
+		var providerListALL = [{name:label.noIp, value:"dynupdate.no-ip.com"},
+							{name:label.dynDNS, value:"dyndns.org"},
+							{name:label.oray, value:"oray.com"},
+							{name:label.pubyun, value:"pubyun.com"}];
+
+		var providerList = productSelect(providerListALL, ret.dev_feature.ddns.provider);
+
+		initSelect("Provider", providerList, ddns.provider);
+
+		$("#UserName").val(ddns.user);
+		$("#Pwd").val(ddns.password);
+		$("#HostName").val(ddns.domain);
+	}
+
+	init(ddnsInfo);
+
+	function checkUserName(username){
+		if ("" == username){
+			return E_DDNS_USERNAME_BLANK;
+		}
+
+		if (E_NONE != checkStrLen(username, 64, 1)){
+			return E_DDNS_USERNAME_LEN;
+		}
+
+		return E_NONE;
+	}
+
+	function checkPassWord(password){
+		var err = checkStrFormat(password);
+		switch(err){
+		case E_STRINGBLANK:
+			return E_DDNS_PWD_BLANK;
+		case E_STRINGFORMAT:
+			return E_DDNS_PWD_ILLEGAL;
+		}
+		if (checkStrLen(password, 64, 1)){
+			return E_DDNS_PWD_LEN;
+		}
+		return E_NONE;
+	}
+
+	function checkDDNSDomain(domain){
+		var err = checkDomain(domain, 64);
+		switch(err){
+		case E_BLANK:
+			return E_DDNS_HOST_BLANK;
+		//case E_DOMAINFORMAT:
+		//	return E_DDNS_HOST_ILLEGAL;
+		case E_DOMAINLEN:
+			return E_DDNS_HOST_LEN;
+		}
+		return E_NONE;
+	}
+
+	$("#Save").click(function(){
+		var data = {};
+		var para = {};
+		para.ddns = {};
+		para.ddns.config = data;
+		data.enable = $("#Switch").attr("data-value");
+
+		if ("1" == data.enable){
+			data.provider = $("#Provider").attr("data-value");
+			data.user = $("#UserName").val();
+			data.password = $("#Pwd").val();
+			data.domain = $("#HostName").val();
+
+			if (handleError(checkUserName(data.user))){
+				return;
+			}
+
+			if (handleError(checkPassWord(data.password))){
+				return;
+			}
+
+			if (handleError(checkDDNSDomain(data.domain))){
+				return;
+			}
+		}
+
+		showLoading(label.saving);
+		apiSet(para, function(ret){
+			var code = ret[ERR_CODE];
+			handleError(code, showNote)?closeLoading():closeLoading(2);
+		});
+	});
+})();
+</script>
+<div class="help hidden">
+	<ul class="help-content">
+		<li class="help-head">
+			<img class="app-icon" src="/luci-static/images/app-icon/ddns.png?_=20180420151033" />
+			<span class="help-title">{%label.ddns%}</span>
+		</li>
+		<div id="HelpDdns">
+		</div>
+	</ul>
+</div>
+<div class="head-con">
+	<img class="app-icon" src="/luci-static/images/app-icon/ddns.png?_=20180420151033" />
+	<a href="javascript:history.go(-1);" class="head-btn-l">
+		<i class="head-btn icon icon_back"></i>
+		<span class="head-title">{%label.ddns%}</span>
+	</a>
+</div>
+<div class="set-con below-head">
+	<ul class="set-con">
+		<li class="text-con">
+			<label class="desc-lbl">{%label.ddns%}</label>
+			<span class="set-con-middle">
+				<span id="Switch" class="switch">
+					<i class="switch-circle"></i>
+				</span>
+			</span>
+		</li>
+	</ul>
+	<div id="Param" class="hidden">
+		<ul class="set-con">
+			<li class="text-con">
+				<label class="desc-lbl">{%label.serviceProvider%}</label>
+				<span id="Provider" class="select">
+					<span class="value sel-value"></span>
+					<i class="tip icon_list-expansion"></i>
+				</span>
+			</li>
+		</ul>
+		<ul class="set-con">
+			<li class="text-con">
+				<label class="desc-lbl">{%label.ddnsName%}</label>
+				<input id="UserName" class="text hover" maxLength="64" value="" />
+			</li>
+		</ul>
+		<ul class="set-con">
+			<li class="text-con">
+				<label class="desc-lbl">{%label.ddnsPwd%}</label>
+				<input id="Pwd" class="text hover" type="password" autocomplete="new-password" maxLength="64" value="" /><i class="tip icon-eye" data-value="0"></i>
+			</li>
+		</ul>
+		<ul class="set-con">
+			<li class="text-con">
+				<label class="desc-lbl">{%label.hostName%}</label>
+				<input id="HostName" class="text hover" maxLength="64" placeholder="{%label.domainInputTip%}" value="" />
+			</li>
+		</ul>
+		<div class="err-note hidden">
+			<i class="err-icon icon_remind_line"></i>
+			<p class="note-str"></p>
+		</div>
+	</div>
+	<div class="btn-con">
+		<input id="Save" class="btn" type="button" value="{%btn.save%}" />
+	</div>
+</div>

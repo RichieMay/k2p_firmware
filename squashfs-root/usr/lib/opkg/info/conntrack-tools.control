@@ -1,0 +1,9 @@
+Package: conntrack-tools
+Version: 1.0.0-1
+Depends: libc, libnetfilter-conntrack
+Source: package/network/utils/conntrack-tools
+Section: net
+Maintainer: Jo-Philipp Wich <jow@openwrt.org>
+Architecture: ramips_1004kc
+Installed-Size: 89362
+Description:  unknown

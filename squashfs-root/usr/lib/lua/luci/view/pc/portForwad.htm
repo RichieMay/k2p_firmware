@@ -1,0 +1,436 @@
+<style type="text/css">span.to{display:inline-block;vertical-align:middle;line-height:28px;font-size:14px;color:#4f5356;padding-left:5px;padding-right:5px}div.tab-con{font-size:14px;color:#4f5356;text-align:center;margin:40px 50px 10px}table.set-con{width:100%;border-collapse:collapse;table-layout:fixed}.set-con-long{width:16%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.set-con-short{width:20%}input.text-con{color:#4f5356;height:34px;line-height:34px;width:85%;padding:0 .5em;font-size:14px;border:1px solid #DDD;border-radius:4px;text-align:center}li.text-tip{height:36px;line-height:36px;vertical-align:inherit;width:90%}li.text-con span.select-con{width:100%;padding:0;vertical-align:inherit}span.select span.sel-con{width:100%;text-align:center}li.text-tip ul.sel-opts-ul{width:100%}.boder-tr{border-bottom:1px solid #e7e7e7;height:40px;line-height:40px;background-color:#f4f4f4}ul.add-orange{color:#ff8000;margin-top:4px;font-size:32px;float:right;margin-right:30px;cursor:pointer}ul.add-gray{color:#bfbfbf;cursor:default}span.color-gray{color:#bfbfbf}span.handle-tip{display:inline-block;width:50%;line-height:40px;cursor:pointer}.table-height{height:40px;line-height:40px;border-bottom:1px solid #e7e7e7}p.note-str{text-align:left}.line-gray{opacity:.7;filter:alpha(opacity=70)}i.icon_add{font-size:38px}</style>
+<script type="text/javascript">
+(function(){
+	<%
+		local para = {
+			port_forward = {config = {}, forward_list = {}},
+			network = {lan = {}}
+		}
+		local result = tpl_get_data(para, true)
+	-%>
+
+	var fwdInfo = <%=result%>;
+	var ip = fwdInfo[K_MODULE].network.lan.ip;
+	var netmask = fwdInfo[K_MODULE].network.lan.netmask;
+	var webFeature = getWebFeature("portForwad");
+	var tabLength = webFeature.tabLength;
+
+	init(fwdInfo);
+
+	function init(result){
+		var errNo = result[ERR_CODE];
+		var ret;
+		if (E_NONE == errNo){
+			ret = result[K_MODULE];
+		}else{
+			console.log(result);
+			return;
+		}
+
+		var switchFwd = ret.port_forward.config;
+
+		initSwitch("SwitchFwd", switchFwd.enable, function(state,init){
+			if (1 == state){
+				$("#FwdTab").show();
+			}else{
+				$("#FwdTab").hide();
+			}
+
+			if (!init){
+				var data = {};
+				var para = {};
+				para.port_forward = {};
+				para.port_forward.config = data;
+
+				data.enable = $("#SwitchFwd").attr("data-value");
+				showLoading(label.saving);
+				apiSet(para, function(){
+					$.setTimeout(function(){
+						closeLoading();
+					}, 2000);
+				});
+			}
+		});
+	}
+
+	var fwdRuleLen;
+	var hashList = [];
+	var addFlag = "1";
+	var editFlag = "1";
+	var portAgree = [{name:"TCP", value:1},
+					{name:"UDP", value:2},
+					{name:"TCP&UDP", value:3}];
+
+	var fwdList = fwdInfo[K_MODULE].port_forward.forward_list;
+
+	function portfwdRule(ret){
+		fwdRuleLen = ret.length;
+		if (parseInt(tabLength) == fwdRuleLen){
+			$("ul.add-orange").addClass("add-gray");
+		}
+		if (0 == fwdRuleLen){
+			$("ul.add-orange").click();
+		}else{
+			for (var i = 0; i < fwdRuleLen; i++){
+				$("#PortfwdTab").append(initFwdEntry(ret[i]));
+				hashList[ret[i].id] = i;
+			}
+
+			$(".del-item").click(function(){
+				if (addFlag == "1"){
+					var data = {};
+					var para = {};
+					para.port_forward = {};
+					para.port_forward.forward_list = data;
+
+					data.id = $(this).attr("data-value");
+					showLoading(label.saving);
+					apiDel(para, function(){
+						$.setTimeout(function(){
+						closeLoading();
+							stateman.go("pc.portForwadApp");
+						}, 2000);
+					});
+				}
+			});
+
+			$(".edit-item").click(function(){
+				if (addFlag == "1" && editFlag == "1"){
+					editFlag = "0";
+					addFlag = "0";
+					$("ul.add-orange").addClass("add-gray");
+					$("span.edit-item").addClass("color-gray");
+					$("span.del-item").addClass("color-gray");
+					$("span.edit-item").removeClass("color-orange");
+					$("span.del-item").removeClass("color-orange");
+					var clientId = $(this).attr("data-value");
+					var clientsIndex = hashList[clientId];
+					$(this).parents("tr").html(newRow + editButton);
+					$("#RuleName").val(ret[clientsIndex].name);
+					$("#ServerIp").val(ret[clientsIndex].ip);
+					if (ret[clientsIndex].extern_port_start == ret[clientsIndex].extern_port_end){
+						$("#ExternalPort").val(ret[clientsIndex].extern_port_start);
+					}else{
+						$("#ExternalPort").val(ret[clientsIndex].extern_port_start + "-" + ret[clientsIndex].extern_port_end);
+					}
+
+					if (ret[clientsIndex].inner_port_start == ret[clientsIndex].inner_port_end){
+						$("#InternalPort").val(ret[clientsIndex].inner_port_start);
+					}else{
+						$("#InternalPort").val(ret[clientsIndex].inner_port_start + "-" + ret[clientsIndex].inner_port_end);
+					}
+
+					initSelect("PortAgreement", portAgree, ret[clientsIndex].protocol, function(val, init){});
+
+					$("#SaveEdit").click(function(){
+						saveFwdPort("set", clientId);
+					});
+
+					$("#SaveCancel").click(function(){
+						stateman.go("pc.portForwadApp");
+					});
+
+					$("input.hover").bind("focus", function(){
+						$(".err-note").hide();
+					});
+				}
+			});
+		}
+	}
+
+	function initFwdEntry(client){
+		var fwdProtocol,externalPort,insidePort;
+		if (client.protocol == "1"){
+			fwdProtocol = "TCP";
+		}else if (client.protocol == "2"){
+			fwdProtocol = "UDP";
+		}else{
+			fwdProtocol = "TCP&UDP";
+		}
+		if (client.extern_port_start == client.extern_port_end){
+			externalPort = '<td class="set-con-long">' + client.extern_port_start + '</td>';
+		}else{
+			externalPort ='<td class="set-con-long">' + client.extern_port_start + '<span class="to">' + '-' +'</span>' + client.extern_port_end + '</td>';
+		}
+
+		if (client.inner_port_start == client.inner_port_end){
+			insidePort = '<td class="set-con-long">' + client.inner_port_start + '</td>';
+		}else{
+			insidePort = '<td class="set-con-long">' + client.inner_port_start + '<span class="to">' + '-' +'</span>' + client.inner_port_end + '</td>';
+		}
+
+		var lineColor = checkSameNetwork(ip, client.ip, netmask) ? "" : "line-gray";
+
+		return  '<tr class="table-height ' + lineColor  + '" data-value="' + client.id +'">' +
+					'<td class="set-con-long" title="' + client.name + '">' + client.name + '</td>' +
+					'<td class="set-con-long">' + client.ip + '</td>' + externalPort + insidePort +
+					'<td class="set-con-short">' + fwdProtocol + '</td>' +
+					'<td class="set-con-short">' +
+						'<span class="handle-tip color-orange edit-item" data-value="' + client.id +'">' + btn.edit +  '</span>' +
+						'<span class="handle-tip color-orange del-item" data-value="' + client.id +'">' + btn.del +  '</span>' +
+					'</td>' +
+				'</tr>';
+	}
+
+	var newRow =  '<td>' +
+						'<input id="RuleName" class="text-con hover" maxLength="32" value="" />' +
+					'</td>' +
+					'<td>' +
+						'<input id="ServerIp" class="text-con hover" maxLength="15" value="" />' +
+					'</td>' +
+					'<td>' +
+						'<input id="ExternalPort" class="text-con hover" maxLength="11" value="" />' +
+					'</td>' +
+					'<td>' +
+						'<input id="InternalPort" class="text-con hover" maxLength="11" value="" />' +
+					'</td>' +
+					'<td>' +
+						'<li class="text-con text-tip">' +
+							'<span id="PortAgreement" class="select select-con">' +
+								'<span class="value sel-value sel-con">' + '</span>' +
+								'<i class="tip icon_list-expansion">' + '</i>' +
+							'</span>' +
+						'</li>' +
+					'</td>' +
+					'<td>';
+
+	var saveButton = '<span class="handle-tip color-orange save-item" id="SaveAdd">' + btn.save +  '</span>' +
+					 '<span class="handle-tip color-orange del-cancel" id="Cancel">' + btn.cancel +  '</span></td>';
+
+	var editButton = '<span class="handle-tip color-orange edit-save" id="SaveEdit">' + btn.save +  '</span>' +
+					 '<span class="handle-tip color-orange del-cancel" id="SaveCancel">' + btn.cancel +  '</span></td>';
+
+	$("ul.add-orange").click(function(){
+		if ("1" == editFlag && "1" == addFlag){
+			if (document.getElementById("PortfwdTab").rows.length < parseInt(tabLength) + 1
+				&& document.getElementById("PortfwdTab").rows.length == (fwdRuleLen + 1)){
+				addFlag = "0";
+				$("span.edit-item").addClass("color-gray");
+				$("span.del-item").addClass("color-gray");
+				$("span.edit-item").removeClass("color-orange");
+				$("span.del-item").removeClass("color-orange");
+				var emptyRow =  '<tr class="table-height">' + newRow + saveButton + '</tr>';
+				$("#PortfwdTab").append(emptyRow);
+				initSelect("PortAgreement", portAgree, 1, function(val, init){});
+				$("ul.add-orange").addClass("add-gray");
+			}else{
+				$("ul.add-orange").addClass("add-gray");
+			}
+
+			$("#SaveAdd").click(function(){
+				saveFwdPort("add","");
+			});
+
+			$("#Cancel").click(function(){
+				stateman.go("pc.portForwadApp");
+			});
+
+			$("input.hover").bind("focus", function(){
+				$(".err-note").hide();
+			});
+		}
+	});
+
+	function saveFwdPort(action, index){
+		var data = {};
+		var para = {};
+		para.port_forward = {};
+		para.port_forward.forward_list = data;
+
+		data.protocol = $("#PortAgreement").attr("data-value");
+		data.id = index;
+		data.name = $("#RuleName").val();
+		data.ip = $("#ServerIp").val();
+		var exPort,inPort;
+		exPort = $("#ExternalPort").val();
+
+		if ("" == $("#InternalPort").val()){
+			$("#InternalPort").val($("#ExternalPort").val());
+		}
+
+		inPort = $("#InternalPort").val();
+
+		if (handleError(checkRuleName(data.name))){
+			return;
+		}
+		if (handleError(checkRuleIp(data.ip))){
+			return;
+		}
+		if (handleError(checkPort(exPort, inPort))) {
+			return;
+		}
+		var exPortArray = getPortArray(exPort);
+		data.extern_port_start = exPortArray[0];
+		data.extern_port_end = exPortArray[1];
+
+		var inPortArray = getPortArray(inPort);
+		data.inner_port_start = inPortArray[0];
+		data.inner_port_end = inPortArray[1];
+		showLoading(label.saving);
+		if(action == 'set'){
+			apiSet(para, function(ret){
+				var code = ret[ERR_CODE];
+				if (E_NONE == code){
+					$.setTimeout(function(){
+						closeLoading();
+						stateman.go("pc.portForwadApp");
+					}, 2000);
+				}else{
+					handleError(code);
+					closeLoading();
+				}
+			});
+		}else if(action == 'add'){
+			apiAdd(para, function(ret){
+				var code = ret[ERR_CODE];
+				if (E_NONE == code){
+					$.setTimeout(function(){
+						closeLoading();
+						stateman.go("pc.portForwadApp");
+					}, 2000);
+				}else{
+					handleError(code);
+					closeLoading();
+				}
+			});
+		}
+	}
+	portfwdRule(fwdList);
+
+	function checkRuleName(name){
+		if("" == name){
+			return E_PORTFORWARD_NAME_BLANK;
+		}
+		if (checkStrLen(name, 32, 1)){
+			return E_PORTFORWARD_NAME_LEN;
+		}
+		return E_NONE;
+	}
+	function checkRuleIp(ip){
+		var err = checkIp(ip);
+		switch(err){
+		case E_BLANK:
+			return E_PORTFORWARD_IP_BLANK;
+		case E_INVIPFMT:
+			return E_PORTFORWARD_IP_FORMAT;
+		case E_INVIP:
+			return E_PORTFORWARD_IP_ILLEGAL;
+		}
+		return E_NONE;
+	}
+	function checkPort(exPort, inPort){
+		var min = 1;
+		var max = 65535;
+		console.log(exPort);
+		var err = checkPortFormat(exPort, "ex");
+		if(E_NONE != err){
+			return err;
+		}
+
+		var exPortArray = getPortArray(exPort);
+		err = checkNumNew(exPortArray[0], min, max);
+		if(E_NONE != err){
+			return E_PORTFORWARD_EX_START_RANGE;
+		}
+		err = checkNumNew(exPortArray[1], min, max);
+		if(E_NONE != err){
+			return E_PORTFORWARD_EX_END_RANGE;
+		}
+		if(exPortArray[1] < exPortArray[0]){
+			return E_PORTFORWARD_EX_START_END_LESS;
+		}
+
+		err = checkPortFormat(inPort, "in");
+		if(E_NONE != err){
+			return err;
+		}
+		var inPortArray = getPortArray(inPort);
+		err = checkNumNew(inPortArray[0], min, max);
+		if(E_NONE != err){
+			return E_PORTFORWARD_IN_START_RANGE;
+		}
+		err = checkNumNew(inPortArray[1], min, max);
+		if(E_NONE != err){
+			return E_PORTFORWARD_IN_END_RANGE;
+		}
+		if(inPortArray[1] < inPortArray[0]){
+			return E_PORTFORWARD_IN_START_END_LESS;
+		}
+
+		if(exPortArray[1] == exPortArray[0] && inPortArray[1] > inPortArray[0]){
+			return E_PORTFORWARD_IN_EX_SINGLE;
+		}
+		if(exPortArray[1] > exPortArray[0] && !(inPortArray[1] == inPortArray[0] ||
+			(inPortArray[1] == exPortArray[1] && inPortArray[0] == exPortArray[0] ))){
+			return E_PORTFORWARD_IN_EX_SAME;
+		}
+		return E_NONE;
+	}
+	function checkPortFormat(port, portType){
+		var EX = portType.toUpperCase();
+		if("" == port){
+			return eval("E_PORTFORWARD_"+EX+"_BLANK");
+		}
+
+		if((!(/^(?:(\d+|\d+-\d+))$/gi.test(port))) || (/(?:(^0[0-9]+[0-9-]*|\d*-0\d+))$/gi.test(port)))
+		{
+			return eval("E_PORTFORWARD_"+EX+"_FORMAT");
+		}
+		return E_NONE;
+	}
+
+	function getPortArray(port){
+		var portArray = port.split('-');
+		portArray[0] = parseInt(portArray[0]);
+		portArray[1] = parseInt(!(portArray[1])?portArray[0]:portArray[1]);
+		return portArray;
+	}
+
+})();
+</script>
+<div class="help hidden">
+	<ul class="help-content">
+		<li class="help-head">
+			<img class="app-icon" src="/luci-static/images/app-icon/port_forward.png?_=20180420151033" />
+			<span class="help-title">{%label.portForwad%}</span>
+		</li>
+		<div id="HelpPortForwad">
+		</div>
+	</ul>
+</div>
+<div class="head-con">
+	<img class="app-icon" src="/luci-static/images/app-icon/port_forward.png?_=20180420151033" />
+	<a href="javascript:history.go(-1);" class="head-btn-l">
+		<i class="head-btn icon icon_back"></i>
+		<span class="head-title">{%label.portForwad%}</span>
+	</a>
+</div>
+<div class="set-con below-head">
+	<ul class="set-con">
+		<li class="text-con">
+			<label class="desc-lbl">{%label.portForwad%}</label>
+			<span class="set-con-middle">
+				<span id="SwitchFwd" class="switch">
+					<i class="switch-circle"></i>
+				</span>
+			</span>
+		</li>
+	</ul>
+	<div id="FwdTab" class="tab-con table-con hidden">
+		<table  id="PortfwdTab" class="set-con">
+			<tr class="boder-tr">
+				<th class="set-con-long table-con-forward">{%label.ruleName%}</th>
+				<th class="set-con-long">{%label.serverIP%}</th>
+				<th class="set-con-long">{%label.serverExPort%}</th>
+				<th class="set-con-long">{%label.serverInPort%}</th>
+				<th class="set-con-long">{%label.fwdAgreement%}</th>
+				<th class="set-con-short table-con-handle">{%label.handle%}</th>
+			</tr>
+		</table>
+		<ul class="add-orange"><i class="icon_add"></i></ul>
+		<div class="err-note hidden">
+			<i class="err-icon icon_remind_line"></i>
+			<p class="note-str"></p>
+		</div>
+	</div>
+</div>

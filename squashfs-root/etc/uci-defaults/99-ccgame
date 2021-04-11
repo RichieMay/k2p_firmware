@@ -1,0 +1,24 @@
+#!/bin/sh
+
+. /lib/functions.sh
+
+firewall_wan_add_vpn_cc() {
+	local cfg=$1
+	local name
+	local vpn_cc_exist
+	
+	config_get name $cfg name
+	[ "$name" = "wan" ] && {
+		vpn_cc_exist=$(uci get firewall.$cfg.network | grep vpn_cc)
+		
+		[ -z "$vpn_cc_exist" ] && {
+			uci add_list firewall.$cfg.network="vpn_cc"
+			uci commit firewall
+		}
+		break
+	}
+	
+}
+
+config_load firewall
+config_foreach firewall_wan_add_vpn_cc zone

@@ -1,0 +1,5 @@
+/etc/config/white_list
+/usr/bin/white_list_set
+/etc/init.d/white_list
+/usr/bin/update_white_list
+/usr/bin/white_list

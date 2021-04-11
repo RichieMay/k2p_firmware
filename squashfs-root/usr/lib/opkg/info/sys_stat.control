@@ -1,0 +1,8 @@
+Package: sys_stat
+Version: 1
+Depends: libc, libubox
+Source: package/phicomm/sys_stat
+Section: Phicomm Properties
+Architecture: ramips_1004kc
+Installed-Size: 2636
+Description:  unknown

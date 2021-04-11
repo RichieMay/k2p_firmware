@@ -1,0 +1,108 @@
+<style type="text/css">#Content{top:0;bottom:1.573rem;-webkit-overflow-scrolling:touch}ul.menu{position:absolute;bottom:.373rem;width:72%;height:1.2rem;box-sizing:border-box;background-color:#f8f8f8;font-size:0;border-radius:.7rem;background-color:#fff;box-shadow:0 8px 24px 0 rgba(96,100,129,0.31);left:14%}li.menu-item{color:#616877;width:24%;display:inline-block;text-align:center}a.active li.menu-item{color:#ff7900}li.menu-item p{font-size:.278rem}li.menu-item i.icon{font-size:.8rem;line-height:1.2rem}</style>
+<script type="text/javascript">
+(function(){
+	var QB_REBOOT = "reboot",
+		QB_LOGOUT = "logout";
+	var quickButtonListAll = [{name:btn.reboot, value:QB_REBOOT},
+							{name:btn.logout, value:QB_LOGOUT}];
+
+	initTool("Tool", quickButtonListAll, null, function(val){
+		switch(val){
+		case QB_REBOOT:
+			showConfirm(label.routerReboot, function(choose){
+				if (choose){
+					showLoading(label.rebooting);
+					$.sendAjax('/system/reboot', null, function(ret){
+						$.setTimeout(function(){
+							window.location.reload();
+						}, ROUTER.time.reboot);
+
+						$.setTimeout(function(){
+							// 检测LAN是否可以连接DUT
+							lanDetecting(function(){
+								window.location.reload();
+							});
+						}, ROUTER.time.detectDelay);
+					});
+				}
+			});
+			break;
+		case QB_LOGOUT:
+			logout();
+			break;
+		default:
+			break;
+		}
+	});
+
+	if (ROUTER.languageList.length > 1){
+		$("#LangList").show();
+	}else{
+		$("#LangList").hide();
+	}
+
+	var curLang = ROUTER.lang;
+	var langListUsed = LANGLIST.getLangList();
+
+	initTool("LangList", langListUsed, curLang, function(val, init){
+		for (var i = 0; i < langListUsed.length; i++){
+			if (langListUsed[i]["value"] == val){
+				$("#Language").text(langListUsed[i]["name"]);
+				break;
+			}
+		}
+
+		if (!init){
+			var data = {};
+			data.lang = val;
+
+			apiSetWithUrl("/welcome/config", data, function(ret){
+				var code = ret[ERR_CODE];
+				if (E_NONE == code){
+					window.location.reload();
+				}else{
+					$.setTimeout(function(){
+						errHandle(code);
+					}, 800);
+				}
+			});
+		}
+	});
+
+	function errHandle(code){
+		switch(code){
+		case E_NONE:
+			return false;
+		default:
+			showNote(errStr.unknownErr + code);
+			break;
+		}
+
+		return true;
+	}
+})();
+</script>
+<div id="Content"></div>
+<div class="head-con">
+	<i class="icon icon_menu head-btn-l" id="Tool"></i>
+	<h1 class="head-title" id="PageTitle">{%label.phicommRouter%}</h1>
+	<div class="switch-lang">
+		<span id="LangList" class="select" data-value="0">
+			<span class="select-value">English</span>
+		</span>
+	</div>
+</div>
+<ul class="menu">
+	<a href="#/phone/netState" data-active="netState"><li class="menu-item">
+		<i class="icon icon_state" data-down="icon_state_down"></i>
+	</li></a>
+	<a href="#/phone/deviceManage" data-active="deviceManage"><li class="menu-item">
+		<i class="icon icon_terminal" data-down="icon_terminal_down"></i>
+	</li></a>
+	<a href="#/phone/wifiSet" data-active="wifiSet"><li class="menu-item">
+		<i class="icon icon_wirelessl" data-down="icon_wirelessl_down"></i>
+	</li></a>
+	<a href="#/phone/App" data-active="App"><li class="menu-item">
+		<i class="icon icon_set" data-down="icon_set_down"></i>
+	</li></a>
+</ul>

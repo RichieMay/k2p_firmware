@@ -1,0 +1,10 @@
+Package: libuci-lua
+Version: 2018-03-24.1-1
+Depends: libc, libuci, liblua
+Source: package/system/uci
+License: LGPLv2.1 GPLv2
+Section: libs
+Maintainer: Felix Fietkau <nbd@openwrt.org>
+Architecture: ramips_1004kc
+Installed-Size: 6748
+Description:  unknown

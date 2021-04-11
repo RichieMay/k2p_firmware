@@ -1,0 +1,9 @@
+Package: luci-lib-web
+Version: 1.0.0-1
+Depends: libc, luci-lib-core, luci-lib-sys, luci-lib-nixio, luci-lib-core
+Source: /home/jenkins/jenkins_job/workspace/SOP_K2P_V5.2/luci-ux
+Section: luci
+Maintainer: LuCI Development Team <luci@lists.subsignal.org>
+Architecture: ramips_1004kc
+Installed-Size: 32456
+Description:  unknown

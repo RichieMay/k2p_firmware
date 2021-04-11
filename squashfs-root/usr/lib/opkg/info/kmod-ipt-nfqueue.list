@@ -1,0 +1,2 @@
+/etc/modules.d/ipt-nfqueue
+/lib/modules/3.10.14/xt_NFQUEUE.ko

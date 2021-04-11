@@ -1,0 +1,3 @@
+config common_info "comm_info"
+	option enable "0"
+	option guest_disabled "0"

@@ -1,0 +1,102 @@
+<style type="text/css">ul.switch-bottom{margin-bottom:30px;}</style>
+
+<script type="text/javascript">
+(function(){
+	<%-
+		local para = {
+			light = {config = {}}
+		}
+
+		local result = tpl_get_data(para)
+		local enable = result[K_MODULE].light.config.enable
+		local mode = result[K_MODULE].light.config.control
+	-%>
+	var enable = '<%=enable%>';
+	var mode = '<%=mode%>';
+
+
+       var lightmode = [
+			  {name:"缺省", value:"off"},
+			  {name:"蓝色", value:"blue"},
+			  {name:"红色", value:"red"},
+			  {name:"黄色", value:"yellow"},
+			  {name:"橙色", value:"orange"},
+			  {name:"紫色", value:"purple"},
+			  {name:"走马灯", value:"show"},
+			  {name:"时间灯", value:"time"}];
+       initSelect("SelectMode",lightmode,mode, onSelectChange);
+	initSwitch("Switch", enable, onSwitchClick);
+
+	function onSwitchClick(state, init){
+
+	}
+	function onSelectChange(type){
+		$('#time-tips').toggleClass('hidden', type !== 'time');
+	}
+	$("#Save").click(function(){
+
+			var para = {};
+			para.light = {};
+			para.light.config = {enable:$("#Switch").attr("data-value"),control:$("#SelectMode").attr("data-value")};
+
+			showLoading(label.saving);
+			apiSet(para, function(ret){
+				var code = ret[ERR_CODE];
+				handleError(code, showNote)?closeLoading():closeLoading(ret[K_MODULE].light.config.wait_time);
+			});
+
+	});
+})();
+</script>
+<div class="help hidden">
+	<ul class="help-content">
+		<li class="help-head">
+			<img class="app-icon" src="/luci-static/images/app-icon/led.png?_=20170822124504" />
+			<span class="help-title">{%label.ledTip%}</span>
+		</li>
+		<li class="summary">{%helpStr.light%}</li>
+	</ul>
+</div>
+<div class="head-con">
+	<img class="app-icon" src="/luci-static/images/app-icon/led.png?_=20170822124504" />
+	<a href="javascript:history.go(-1);" class="head-btn-l">
+		<i class="head-btn icon icon_back"></i>
+		<span class="head-title">{%label.ledSet%}</span>
+	</a>
+</div>
+<div class="set-con below-head">
+	<ul class="set-con  switch-bottom">
+		<li class="text-con">
+			<label class="desc-lbl">指示灯开关</label>
+			<span class="set-con-middle">
+			<span id="Switch" class="switch">
+				<i class="switch-circle icon_select_off"></i>
+			</span>
+			</span>
+		</li>
+	</ul>
+	<ul class="set-con">
+		<li class="text-con">
+			<label class="desc-lbl">LED控制</label>
+			<span id="SelectMode" class="select">
+				<span class="value sel-value"></span>
+				<i class="tip icon_list-expansion"></i>
+			</span>
+		</li>
+	</ul>
+	<div class="err-note hidden">
+		<i class="err-icon icon_remind_line"></i>
+		<p class="note-str"></p>
+	</div>
+</div>
+<div  style="width:270px;margin:9px auto" id="time-tips" class="hidden">
+<p class="note-str price-remark" style="color:black;width:260px;margin-top:26px;margin-left:60px;">时间灯规则：蓝灯闪烁次数表示时钟，黄灯次数表示分钟的十位，红灯次数表示分钟个位</p>
+</div>
+
+
+<div class="btn-con">
+		<input id="Save" class="btn" type="button" value="保存">
+</div>
+
+
+

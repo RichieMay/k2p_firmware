@@ -1,0 +1,151 @@
+<style type="text/css">li.select-con{width:2.667rem}li.text-con span.select{width:80%!important;padding:0 .18rem}i.tip_select{position:absolute;right:.01rem;top:.15rem;font-size:.8rem}span.time-to{display:inline-block;vertical-align:middle;font-size:.417rem;color:#4f5356}ul.sel-list{overflow:auto;height:4.4rem}div.btn-con{position:absolute;width:100%;bottom:1rem}</style>
+<script type="text/javascript">
+(function(){
+	<%
+		local para = {
+			time_reboot = {config = {}}
+		}
+		local result = tpl_get_data(para, true)
+	-%>
+	var timeInfo = <%=result%>;
+
+	init(timeInfo);
+
+	function init(result){
+		var errNo = result[ERR_CODE];
+		var ret;
+		if (E_NONE == errNo){
+			ret = result[K_MODULE];
+		}else{
+			console.log(result);
+			return;
+		}
+
+		var info = ret.time_reboot.config;
+
+		var rebootSwitch = info.enable;
+
+		initSwitch("RebootSwitch", rebootSwitch, function(state){
+			if (1 == state){
+				$("#TimePara").show();
+				$("div.close-bg").hide();
+			}else{
+				$(".err-note").hide();
+				$("#TimePara").hide();
+				$("div.close-bg").show();
+			}
+		});
+
+		var curHour = parseInt(info.reboot_hour, 10);
+		var curMin = parseInt(info.reboot_minute, 10);
+		var hourList = [];
+		var hour;
+		for (var i = 0; i < 24; i++){
+			if (i.toString().length == 1){
+				hour = "0" + i;
+			}else{
+				hour = i;
+			}
+			hourList.push({name : hour, value : i});
+		}
+
+		var minList = [];
+		var min, val;
+		for (var i = 0; i < 12; i++){
+			if (i < 2){
+				min = "0" + i * 5;
+			}else{
+				min = i * 5;
+			}
+			val = i * 5;
+			minList.push({name : min, value : val});
+		}
+
+		initSelect("RebootHour", hourList, curHour);
+		initSelect("RebootMin", minList, curMin);
+	}
+
+	$("#SaveTime").click(function(){
+		var data = {};
+		var para = {};
+		para.time_reboot = {};
+		para.time_reboot.config = data;
+
+		data.enable = $("#RebootSwitch").attr("data-value")
+		data.reboot_hour = $("#RebootHour").attr("data-value");
+		data.reboot_minute = $("#RebootMin").attr("data-value");
+
+		showLoading(label.saving);
+		apiSet(para, function(ret){
+			var code = ret[ERR_CODE];
+			if (E_NONE == code){
+				$.setTimeout(function(){
+					closeLoading();
+				}, ret[K_MODULE].time_reboot.config.wait_time * 1000);
+			}else{
+				handleError(code);
+				closeLoading();
+			}
+		});
+	});
+
+	function showNote(noteStr){
+		$("#TimeErr").show();
+		$("#TimeTip").html(noteStr);
+	}
+
+	function errHandle(code){
+		switch(code){
+		case E_NONE:
+			break;
+		default:
+			showNote(errStr.unknownErr + code);
+			break;
+		}
+		return true;
+	}
+})();
+</script>
+<div class="head-con">
+	<a href="javascript:history.go(-1);" class="head-btn-l"><i class="head-btn icon icon_back"></i></a>
+	<h1 class="head-title">{%label.timeRebootSet%}</h1>
+</div>
+<div class="set-con below-head">
+	<ul class="blank-bg"></ul>
+	<ul class="set-con set-switch">
+		<label class="desc-lbl">{%label.rebootSwitch%}</label>
+		<span id="RebootSwitch" class="switch">
+			<i class="switch-circle"></i>
+		</span>
+	</ul>
+	<div class="close-bg">
+		<i class="close-time"></i>
+		<p class="close-tip">{%label.timeRebootClose%}</p>
+	</div>
+	<div id="TimePara" class="hidden">
+		<ul class="blank-bg"></ul>
+		<ul class="set-con">
+			<label class="desc-lbl">{%label.rebootTime%}</label>
+			<li class="text-con select-con">
+				<span id="RebootHour" class="select" data-value="0">
+					<span class="select-value"></span>
+					<i class="tip_select icon_list-expansion"></i>
+				</span>
+			</li>
+			<span class="time-to">{%label.colon%}</span>
+			<li class="text-con select-con">
+				<span id="RebootMin" class="select" data-value="0">
+					<span class="select-value"></span>
+					<i class="tip_select icon_list-expansion"></i>
+				</span>
+			</li>
+		</ul>
+	</div>
+	<div class="err-note hidden">
+		<i class="err-icon icon_remind_line"></i>
+		<p class="note-str"></p>
+	</div>
+	<div class="btn-con">
+		<input id="SaveTime" class="btn" type="button" value="{%btn.save%}" />
+	</div>
+</div>

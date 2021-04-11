@@ -1,0 +1,8 @@
+Package: wifi_time_switch
+Version: 1
+Depends: libc, phicomm_libs
+Source: package/phicomm/wifi_time_switch
+Section: Phicomm Properties
+Architecture: ramips_1004kc
+Installed-Size: 4024
+Description:  unknown

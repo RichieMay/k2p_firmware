@@ -1,0 +1,5 @@
+
+config global 'global'
+	option enable_switch '0'
+	option redir_port '1080'
+	option server_index '-1'

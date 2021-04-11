@@ -1,0 +1,15 @@
+#!/bin/sh
+. /lib/functions.sh
+
+uci -q batch <<-EOF >/dev/null
+	add_list ucitrack.@network[-1].affects="safeset"
+	delete ucitrack.@safeset[-1]
+	add ucitrack safeset
+	set ucitrack.@safeset[-1].init=safeset
+	add_list ucitrack.@safeset[-1].affects="arp_defence"
+	commit ucitrack
+EOF
+
+rm -f /tmp/luci-indexcache
+
+exit 0

@@ -1,0 +1,160 @@
+config feature time
+	option reboot 120
+	option reset 125
+	option restore 125
+	option online_upgrade 160
+	option manual_upgrade 160
+	option detect_delay 120
+	option network_restart 28
+	option wireless_restart 35
+
+config feature wifi
+
+config feature smart_connect
+	option support 0
+
+config feature wifi_2g
+	list channel 0
+	list channel 1
+	list channel 2
+	list channel 3
+	list channel 4
+	list channel 5
+	list channel 6
+	list channel 7
+	list channel 8
+	list channel 9
+	list channel 10
+	list channel 11
+	list channel 12
+	list channel 13
+	list band_width 0
+	list band_width 1
+	list band_width 2
+	option mu_mimo 0
+	option beamforming 0
+
+config feature wifi_5g
+	list channel 0
+	list channel 36
+	list channel 40
+	list channel 44
+	list channel 48
+	list channel 149
+	list channel 153
+	list channel 157
+	list channel 161
+	list channel 165
+	list band_width 0
+	list band_width 1
+	list band_width 4
+	list band_width 2
+
+config feature ddns
+	list provider oray.com
+	list provider pubyun.com
+
+config feature system_info
+	list language "zh-cn"
+	option app_URL "http://app.phiwifi.phicomm.com/Service/App/downloadpage/chanel/1H5W"
+	option app_code "pic_code.png"
+	option sw_URL "http://www.phicomm.com/cn/support.php/Soho/software_support/t/sm.html"
+	option footer_type 0
+
+config feature guide
+	list installed "setLgPwd"
+	list installed "guideNetworkSet"
+	list installed "guideWifiSet"
+
+config feature app_pc
+	list installed system-status
+	list installed network-set
+	list installed guest-wifi
+	list installed parent-ctrl
+	list installed backup-reset
+	list installed auto-upgrade
+	list installed safe-set
+	list installed manual-upgrade
+	list installed remote-manage
+	list installed lan-set
+	list installed dhcp-server
+	list installed ddns
+	list installed port-forward
+	list installed DMZ
+	list installed UPnP
+	list installed wisp
+	list installed light
+	list installed signal-condition
+	list installed onekey-diagnose
+	list installed time-sleep
+	list installed white-list
+	list installed url-block
+	list installed adb
+	list installed freesocks
+	list installed tools
+	list installed kms
+
+
+config feature app_h5
+	list installed network-set
+	list installed guest-wifi
+	list installed parent-ctrl
+	list installed remote-manage
+	list installed wisp
+	list installed light
+	list installed admin-pwd
+	list installed lan-set
+	list installed system-upgrade
+	list installed time-reboot
+	list installed factory-reset
+	list installed signal-condition
+	list installed onekey-diagnose
+	list installed time-sleep
+	list installed white-list
+	list installed adb
+	list installed freesocks
+	list installed tools
+
+config feature network_set
+	list wan_type "dhcp"
+	list wan_type "static"
+	list wan_type "pppoe"
+	option detection 1
+	option dial_type 1
+	option findPwd 1
+	option mac_clone 1
+
+config feature guest_wifi
+	option disable_wispon 0
+	option support_timing 1
+
+config feature quick_button
+	list installed "reboot"
+	list installed "time_reboot"
+	list installed "modify_pwd"
+	list installed "logout"
+
+config feature auto_upgrade
+	option timing_upgrade 1
+	option detect_method 0
+
+config feature wifi_timing
+	option support 1
+
+config feature lan_set
+	option reboot_confirm 0
+
+config feature signal_condition
+	option reboot_confirm 1
+
+config feature route_info
+	option network_connect 1
+
+config feature statistic
+	option login 1
+	option first_config 1
+	option diagnosis 1
+
+config feature wifi_extend
+	option reboot_confirm 1
+

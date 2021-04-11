@@ -1,0 +1,13 @@
+#!/bin/sh
+. /lib/functions.sh
+
+uci -q batch <<-EOF >/dev/null
+	del_list ucitrack.@network[-1].affects="sharedwifi"
+	add_list ucitrack.@network[-1].affects="sharedwifi"
+	delete ucitrack.@sharedwifi[-1]
+	add ucitrack sharedwifi
+	set ucitrack.@sharedwifi[-1].init=sharedwifi
+EOF
+
+rm -f /tmp/luci-indexcache
+exit 0

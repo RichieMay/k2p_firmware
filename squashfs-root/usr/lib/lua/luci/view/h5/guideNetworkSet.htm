@@ -1,0 +1,603 @@
+<style type="text/css">div.head-con{border-bottom-width:0}div.wan-type-img{position:relative;background-color:#FFF;text-align:center;overflow:hidden}i.router{display:inline-block;background:url(/luci-static/images/network.png?_=20180420151033) no-repeat;background-size:100% 100%;width:6.587rem;height:6.067rem}i.break-icon{color:#f13f3f;position:absolute;left:7rem;top:1.2rem;background-color:#f8f8f8;font-size:.8rem}#Detect{background-color:#1499e6;box-shadow:0 10px 20px 0 rgba(21,108,238,0.35)}#WanPppoeSet{display:none}#WanStaticSet{display:none}div.wan-sta{line-height:.667rem;padding:0 1rem;font-size:0}i.wan-sta-icon{font-size:.7rem;display:inline-block;color:#f13f3f;vertical-align:top;font-weight:normal}i.icon_remind{color:#f34947}i.icon_select_on{color:#0bcd1e}p.status-detail{width:88%;font-size:.387rem;color:#f13f3f;display:inline-block;vertical-align:middle}#Skip{background-color:#5dbd38;width:25%;margin-right:.4rem}#Retry{width:60%}div.set-con{position:absolute;width:100%}a.guide-hyperlink-findpwd{display:block;font-size:.45rem;margin-top:.2rem;margin-left:45%}ul.set-con{padding:0 1rem;margin:0}div.err-note{padding:0 1rem 0 .6rem}ul.set-con-radio{height:1.067rem;line-height:1.067rem}span.radio{width:40%;display:inline-block}ul.set-con-title{margin:0 1rem;height:auto;line-height:.667rem;font-weight:normal;padding:.2rem 0}div.detect{margin:.333rem auto}</style>
+<%+network-set-script%>
+<script type="text/javascript">
+(function(){
+	<%
+		local para = {
+			network = {wan = {}, static = {}, dhcp = {}, pppoe = {}, pptp = {}, l2tp = {}},
+			dev_feature = {network_set = {}}
+		}
+
+		local result = tpl_get_data(para, true)
+	-%>
+
+	var result = <%=result%>;
+	var wan = result[K_MODULE].network.wan;
+	var static = result[K_MODULE].network.static;
+	var dhcp = result[K_MODULE].network.dhcp;
+	var pppoe = result[K_MODULE].network.pppoe;
+	var pptp = result[K_MODULE].network.pptp;
+	var l2tp = result[K_MODULE].network.l2tp;
+	var ipProtocol;
+	var curWanType = wan.protocol;
+	var statusHd = null;
+	var currentState = stateman.current.name;
+	var networkSet = result[K_MODULE].dev_feature.network_set;
+	var findPwdCap = "1" == networkSet.findPwd?true:false;
+
+	function showButtons(btnPre, btnFp){
+
+		var bShowPre = ROUTER.guideList.length > 3?true:false && btnPre;
+		var bShowNext = true;
+		var bShowFp = findPwdCap && btnFp;
+		var btnNum = 0;
+		btnNum = bShowPre?(btnNum+1):btnNum;
+		btnNum = bShowNext?(btnNum+1):btnNum;
+		btnNum = bShowFp?(btnNum+1):btnNum;
+		if (bShowPre){
+			$("#Previous").show();
+		} else {
+			$("#Previous").hide();
+		}
+		if(bShowNext){
+			$("#NextStep").show();
+			if(btnNum > 1){
+				$("#NextStep").addClass("btn-right");
+			} else {
+				$("#NextStep").removeClass("btn-right");
+			}
+
+		} else {
+			$("#NextStep").show();
+		}
+
+		if(bShowFp){
+			if(btnNum > 2){
+				$("#FindPwd").hide();
+				$(".guide-hyperlink-findpwd").show();
+			} else {
+				$("#FindPwd").show();
+				$(".guide-hyperlink-findpwd").hide();
+			}
+		} else {
+			$("#FindPwd").hide();
+			$(".guide-hyperlink-findpwd").hide();
+		}
+	}
+
+	var WAN_TYPE_DHCP = "dhcp",
+		WAN_TYPE_PPPoE = "pppoe",
+		WAN_TYPE_STATIC_IP = "static",
+		WAN_TYPE_PPTP = "pptp",
+		WAN_TYPE_L2TP = "l2tp";
+
+	var wanTypeAll = [{name:label.wanDHCP, value:WAN_TYPE_DHCP},
+				   {name:label.wanPPPoE, value:WAN_TYPE_PPPoE},
+				   {name:label.wanStatic, value:WAN_TYPE_STATIC_IP},
+				   {name:label.wanPptp, value:WAN_TYPE_PPTP},
+				   {name:label.wanL2tp, value:WAN_TYPE_L2TP}
+				   ];
+
+	var wanType = productSelect(wanTypeAll, networkSet.wan_type);
+
+	initSelect("WanType", wanType, curWanType, function(){
+		var nowSelect = $("#WanType").attr("data-value");
+
+		$(".err-note").hide();
+		setWantype(nowSelect);
+	});
+
+	setWantype(curWanType);
+
+	function initPppoe(){
+		var PppoeUser = pppoe.username;
+		var PppoePwd = pppoe.password;
+		var PppoeSer = pppoe.server;
+
+		$("#PppoeUser").val(PppoeUser);
+		$("#PppoePwd").val(PppoePwd);
+		$("#PppoeServ").val(PppoeSer);
+	}
+
+	function initStaticIp(){
+		var ipVal = static.ip;
+		var maskVal = static.netmask;
+		var gwVal = static.gateway;
+		var primDns = static.dns_pri;
+		var secDns = static.dns_sec;
+
+		$("#WanIpaddr").val(ipVal);
+		$("#WanMask").val(maskVal);
+		$("#WanGw").val(gwVal);
+		$("#PrimDns").val(primDns);
+		$("#SecDns").val(secDns);
+	}
+
+	function initPptp(){
+		$("#VpnServerIp").val(pptp.server);
+		$("#VpnUser").val(pptp.username);
+		$("#VpnPwd").val(pptp.password);
+		$("#WanIpaddr").val(pptp.ip);
+		$("#WanMask").val(pptp.netmask);
+		$("#WanGw").val(pptp.gateway);
+		$("#PrimDns").val(pptp.dns_pri);
+		$("#SecDns").val(pptp.dns_sec);
+
+		initRadio("IpProtocol", pptp.ip_protocol=="1"?"1":"0", function(idx){
+			if (0 == idx){
+				$("#WanStaticSet").hide();
+				ipProtocol = "0";
+			}else{
+				$("#WanStaticSet").show();
+				ipProtocol = "1";
+			}
+		});
+	}
+
+	function initL2tp(){
+		$("#VpnServerIp").val(l2tp.server);
+		$("#VpnUser").val(l2tp.username);
+		$("#VpnPwd").val(l2tp.password);
+		$("#WanIpaddr").val(l2tp.ip);
+		$("#WanMask").val(l2tp.netmask);
+		$("#WanGw").val(l2tp.gateway);
+		$("#PrimDns").val(l2tp.dns_pri);
+		$("#SecDns").val(l2tp.dns_sec);
+
+		initRadio("IpProtocol", l2tp.ip_protocol=="1"?"1":"0", function(idx){
+			if (0 == idx){
+				$("#WanStaticSet").hide();
+				ipProtocol = "0";
+			}else{
+				$("#WanStaticSet").show();
+				ipProtocol = "1";
+			}
+		});
+	}
+	function setWantype(wanType){
+		if(wanType == 'dhcp'){
+			$("span.select-value").text(label.wanDHCP);
+			$("div.wan-type-img").show();
+			$("#WanPppoeSet").hide();
+			$("#WanStaticSet").hide();
+			$("#WanVpn").hide();
+			$("#WanType").attr("data-value","dhcp");
+		}else if(wanType == 'pppoe'){
+			$("span.select-value").text(label.wanPPPoE);
+			$("div.wan-type-img").show();
+			$("#WanPppoeSet").show();
+			$("#WanStaticSet").hide();
+			$("#WanVpn").hide();
+			$("#WanType").attr("data-value","pppoe");
+			initPppoe();
+		}else if(wanType == 'static'){
+			$("span.select-value").text(label.wanStatic);
+			$("div.wan-type-img").hide();
+			$("#WanPppoeSet").hide();
+			$("#WanStaticSet").show();
+			$("#WanVpn").hide();
+			$("#WanType").attr("data-value","static");
+			initStaticIp();
+		}else if(wanType == 'pptp'){
+			$("span.select-value").text(label.wanPptp);
+			$("#WanPppoeSet").hide();
+			$("#WanStaticSet").hide();
+			$("#WanVpn").show();
+			$("#WanType").attr("data-value","pptp");
+			initPptp();
+		}else if(wanType == 'l2tp'){
+			$("span.select-value").text(label.wanL2tp);
+			$("#WanPppoeSet").hide();
+			$("#WanStaticSet").hide();
+			$("#WanVpn").show();
+			$("#WanType").attr("data-value","l2tp");
+			initL2tp();
+		}
+		showButtons(true, "pppoe" == wanType);
+	}
+
+	function showWanState(state, stateStr){
+		if (state){// wan connected
+			$("i.wan-sta-icon").removeClass("icon_remind").addClass("icon_select_on");
+			$("p.status-detail").css("color","#575757").text(stateStr);
+			$("i.break-icon").hide();
+		}else{// wan disconnected
+			$("i.wan-sta-icon").removeClass("icon_select_on").addClass("icon_remind");
+			$("p.status-detail").css("color","#F34947").text(stateStr);
+			$("i.break-icon").show();
+		}
+	}
+
+	//上网状态检测
+	function refreshWanState(){
+		var para = {
+			network:{wan_status:null}
+		};
+
+		apiGet(para, function(data){
+			if (currentState != stateman.current.name){
+				return;
+			}
+
+			var wanStatus = data[K_MODULE]["network"]["wan_status"];
+			var code = wanStatus["status_code"];
+			if ("1" == code){ // WAN口未连接
+				showWanState(false, label.wanError);
+				$("div.detect").hide();
+			}else{
+				showWanState(true, label.wanOk);
+				if (parseInt(networkSet.detection)){
+					$("div.detect").show();
+				}
+			}
+
+			clearTimeout(statusHd);
+			statusHd = $.setTimeout(refreshWanState, 3000);
+		});
+	}
+
+	//上网方式检测
+	function detectWanType(){
+		var para = {
+			network:{wan_detection:{action:"start"}}
+		};
+
+		apiGet(para);
+	}
+
+	function getWanDetectionState(){
+		var para = {
+			network:{wan_detection:{action:"get"}}
+		};
+
+		apiGet(para, function(data){
+			var info = data[K_MODULE]["network"]["wan_detection"];
+
+			var status = info.running_status;
+			if ("2" == status){ // 上网方式检测完成
+				if ("1" !== info.status_code){ // wan口连接，检测成功
+					var wanType = info.protocol;
+					setWantype(wanType);
+				}
+
+				closeLoading();
+			}else{
+				$.setTimeout(getWanDetectionState, 2000);
+			}
+		});
+	}
+
+	function getWanType(){
+		showLoading(label.wanChecking);
+		detectWanType();// 通知后台进行上网方式检测
+		$.setTimeout(getWanDetectionState, 2000);// 轮询上网方式检测结果
+	}
+
+	$("#Detect").click(function(){
+		getWanType();
+		$(".err-note").hide();
+	});
+
+	if (parseInt(networkSet.detection)){
+		getWanType();
+	}
+
+	refreshWanState();
+
+	// static IP set
+	function saveStatic(){
+		var wanConf = {};
+		var data = {};
+		var para = {};
+
+		para.network = {};
+		para.network.wan = wanConf;
+		wanConf.protocol = 'static';
+		para.network.static = data;
+		data.ip = $("#WanIpaddr").val();
+		data.netmask = $("#WanMask").val();
+		data.gateway = $("#WanGw").val();
+		data.dns_mode = "1";
+		data.dns_pri = $("#PrimDns").val();
+
+		static = data;
+
+		if(handleError(checkStaticConf(data.ip, data.netmask, data.gateway))){
+			return;
+		}
+
+		if (handleError(checkNetworkDns(data.dns_pri, ""))){
+			return;
+		}
+
+		showLoading(label.saving);
+		apiSetWithModule("network", para, function(ret){
+			var code = ret[ERR_CODE];
+			if (E_NONE == code){
+				var time = getMaxWaitTime(ret);
+				$.setTimeout(function(){
+					stateman.go("guideWifiSet");
+				}, time * 1000);
+			}else{
+				closeLoading();
+				handleError(code);
+			}
+		});
+	}
+
+	// DHCP set
+	function saveDhcp(){
+		var wanConf = {};
+		var para = {};
+
+		para.network = {};
+		para.network.wan = wanConf;
+		para.network.dhcp = {};
+		wanConf.protocol = 'dhcp';
+
+		showLoading(label.saving);
+		apiSetWithModule("network", para, function(ret){
+			var code = ret[ERR_CODE];
+			if (E_NONE == code){
+				var time = getMaxWaitTime(ret);
+				$.setTimeout(function(){
+					stateman.go("guideWifiSet");
+				}, time * 1000);
+			}else{
+				closeLoading();
+				handleError(code);
+			}
+		});
+	}
+
+	// PPPoE set
+	function savePppoe(){
+		var wanConf = {};
+		var data = {};
+		var para = {};
+
+		para.network = {};
+		para.network.wan = wanConf;
+		wanConf.protocol = 'pppoe';
+		para.network.pppoe = data;
+		data.username = $("#PppoeUser").val();
+		data.password = $("#PppoePwd").val();
+
+		pppoe = data;
+
+		if (handleError(checkUserName(data.username, "pppoe"))){
+			return;
+		}
+
+		if (handleError(checkPassWord(data.password, "pppoe"))){
+			return;
+		}
+
+		showLoading(label.saving);
+		apiSetWithModule("network", para, function(ret){
+			var code = ret[ERR_CODE];
+			if (E_NONE == code){
+				var time = getMaxWaitTime(ret);
+				$.setTimeout(function(){
+					stateman.go("guideWifiSet");
+				}, time * 1000);
+			}else{
+				handleError(code);
+				closeLoading();
+			}
+		});
+	}
+
+	// PPTP/L2TP set
+	function saveVpn(){
+		var wanConf = {};
+		var data = {};
+		var para = {};
+		var vpnType;
+		para.network = {};
+		para.network.wan = wanConf;
+		wanConf.protocol = $("#WanType").attr("data-value");
+
+		if ("pptp" == $("#WanType").attr("data-value")){
+			para.network.pptp = data;
+			vpnType = "pptp";
+			pptp = data;
+		}else{
+			para.network.l2tp = data;
+			vpnType = "l2tp";
+			l2tp = data;
+		}
+
+		data.server = $("#VpnServerIp").val();
+		data.username = $("#VpnUser").val();
+		data.password = $("#VpnPwd").val();
+		data.ip_protocol = ipProtocol;
+		if ("1" == ipProtocol){
+			data.ip = $("#WanIpaddr").val();
+			data.netmask = $("#WanMask").val();
+			data.gateway = $("#WanGw").val();
+			data.dns_mode = "1";
+			data.dns_pri = $("#PrimDns").val();
+		}
+
+		if (handleError(checkServer(data.server, vpnType))){
+			return;
+		}
+
+		if (handleError(checkUserName(data.username, vpnType))){
+			return;
+		}
+
+		if (handleError(checkPassWord(data.password, vpnType))){
+			return;
+		}
+
+		if ("1" == ipProtocol){
+			if(handleError(checkStaticConf(data.ip, data.netmask, data.gateway))){
+				return;
+			}
+
+			if (handleError(checkNetworkDns(data.dns_pri, ""))){
+				return;
+			}
+		}
+
+		showLoading(label.saving);
+		apiSetWithModule("network", para, function(ret){
+			var code = ret[ERR_CODE];
+			if (E_NONE == code){
+				var time = getMaxWaitTime(ret);
+				$.setTimeout(function(){
+					stateman.go("guideWifiSet");
+				}, time * 1000);
+			}else{
+				handleError(code);
+				closeLoading();
+			}
+		});
+	}
+
+	function sendConfDatas(){
+		var selStr = $("#WanType").attr("data-value");
+
+		switch(selStr){
+		case WAN_TYPE_DHCP:
+			saveDhcp();
+			break;
+		case WAN_TYPE_PPPoE:
+			savePppoe();
+			break;
+		case WAN_TYPE_STATIC_IP:
+			saveStatic();
+			break;
+		case WAN_TYPE_PPTP:
+		case WAN_TYPE_L2TP:
+			saveVpn();
+			break;
+		default:
+			break;
+		}
+	}
+
+	$("#FindPwd").click(function(){
+		stateman.go("checkRouterLink");
+	});
+	$("#NextStep").click(function(){
+		sendConfDatas();
+	});
+
+	$("#Previous").click(function(){
+		stateman.go("guideTimeZone");
+	});
+})();
+</script>
+<div class="head-con">
+	<h1 class="head-title">{%label.networkset%}</h1>
+</div>
+<div class="set-con below-head">
+	<div class="wan-type-img">
+		<i class="router"></i>
+		<i class="break-icon icon_error hidden"></i>
+	</div>
+	<ul class="blank-bg"></ul>
+	<ul class="set-con-title" id="WanSta">
+		<i class="wan-sta-icon"></i>
+		<p class="status-detail"></p>
+	</ul>
+	<div class="btn-con detect hidden">
+		<input id="Detect" class="btn" type="button" value="{%btn.autoDetect%}" />
+	</div>
+	<ul class="set-con">
+		<label class="desc-lbl">{%label.wanType%}</label>
+		<li class="text-con">
+			<span id="WanType" class="select" data-value="0">
+				<span class="select-value">{%label.wanDHCP%}</span>
+				<i class="tip icon_list-expansion"></i>
+			</span>
+		</li>
+	</ul>
+	<div id="WanPppoeSet">
+		<ul class="set-con">
+			<label class="desc-lbl">{%label.pppoeUser%}</label>
+			<li class="text-con">
+				<input id="PppoeUser" class="text hover" maxLength="32" value="" />
+			</li>
+		</ul>
+		<ul class="set-con">
+			<label class="desc-lbl">{%label.pppoePasswd%}</label>
+			<li class="text-con">
+				<input id="PppoePwd" class="text hover" maxLength="32" value="" /><i class="tip icon-eye" data-value="0"></i>
+			</li>
+		</ul>
+	</div>
+	<div id="WanVpn" class="hidden">
+		<ul class="set-con">
+			<label class="desc-lbl">{%label.vpnServer%}</label>
+			<li class="text-con">
+				<input id="VpnServerIp" class="text hover" maxLength="64" value="0.0.0.0" />
+			</li>
+		</ul>
+		<ul class="set-con">
+			<label class="desc-lbl">{%label.vpnName%}</label>
+			<li class="text-con">
+				<input id="VpnUser" class="text hover" maxLength="32" value="" />
+			</li>
+		</ul>
+		<ul class="set-con">
+			<label class="desc-lbl">{%label.vpnPassword%}</label>
+			<li class="text-con">
+				<input id="VpnPwd" class="text hover" type="password" maxLength="32" value="" /><i class="tip icon-eye" data-value="0"></i>
+			</li>
+		</ul>
+		<ul class="set-con set-con-radio">
+			<li class="text-con">
+				<span id="IpProtocol" class="radio-group">
+					<span class="radio uncheck">
+						<i class="uncheck icon_radiobox_off"></i><i class="checked icon_radiobox_on"></i>
+						<label>{%label.dynamicIp%}</label>
+					</span>
+					<span class="radio radio-r uncheck">
+						<i class="uncheck icon_radiobox_off"></i><i class="checked icon_radiobox_on"></i>
+						<label>{%label.staticIp%}</label>
+					</span>
+				</span>
+			</li>
+		</ul>
+	</div>
+	<div id="WanStaticSet">
+		<ul class="set-con">
+			<label class="desc-lbl">{%label.ipaddr%}</label>
+			<li class="text-con">
+				<input id="WanIpaddr" class="text hover" maxLength="15" value="0.0.0.0" />
+			</li>
+		</ul>
+		<ul class="set-con">
+			<label class="desc-lbl">{%label.netmask%}</label>
+			<li class="text-con">
+				<input id="WanMask" class="text hover" maxLength="15" value="0.0.0.0" />
+			</li>
+		</ul>
+		<ul class="set-con">
+			<label class="desc-lbl">{%label.gateway%}</label>
+			<li class="text-con">
+				<input id="WanGw" class="text hover" maxLength="15" value="0.0.0.0" />
+			</li>
+		</ul>
+		<ul class="set-con">
+			<label class="desc-lbl">{%label.firstDns%}</label>
+			<li class="text-con">
+				<input id="PrimDns" class="text hover" maxLength="15" value="0.0.0.0" />
+			</li>
+		</ul>
+	</div>
+	<div class="err-note hidden">
+		<i class="err-icon icon_remind_line"></i>
+		<p class="note-str"></p>
+	</div>
+	<div class="btn-con">
+		<input id="FindPwd" class="btn btn-left hidden" type="button" value="{%btn.pppoeFindPwd%}" />
+		<input id="Previous" class="btn btn-left hidden" type="button" value="{%btn.previousStep%}" />
+		<input id="NextStep" class="btn guide-btn" type="button" value="{%btn.nextStep%}" />
+		<a href="#/checkRouterLink" class="guide-hyperlink-findpwd hidden">{%btn.pppoeFindPwd%}</a>
+	</div>
+</div>

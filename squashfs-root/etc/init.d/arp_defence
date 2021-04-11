@@ -1,0 +1,53 @@
+#!/bin/sh /etc/rc.common
+######################################################################
+# Copyright (C) 2016. Shanghai Feixun Communication Co.,Ltd.
+#
+# DISCREPTION   : arp_defence init 脚本
+# AUTHOR        : lu.liu <lu.liu@phicomm.com>
+# CREATED DATE  : 2017-11-29
+# MODIFIED DATE :
+######################################################################
+
+START=99
+stop_arp_defence() {
+	pid=$(ps | grep arping | awk '{print $1}')
+	kill -9 $pid
+	pid=$(ps | grep 'arp_defence -f' | awk '{print $1}')
+	kill -9 $pid
+}
+
+bind_arp_item(){
+	local cfg=$1
+	local mac
+	local ip
+	config_get mac $cfg mac
+	config_get ip $cfg ip
+	arp_defence -s "$ip" "$mac" > /dev/null 2>&1
+}
+
+start() {
+	#rebind arp items everytime due to the lost of binding items of arp tables while rebooting
+	config_load dhcp
+	config_foreach bind_arp_item host
+	arp_defence_enable=$(uci get arp_defence.arp_defence.enable)
+	if [ ${arp_defence_enable} = 1 ]; then
+		arp_cheat_enable=$(uci get arp_defence.anti_cheat.enable)
+		if [ ${arp_cheat_enable} = 1 ]; then
+			interval_time=$(uci get arp_defence.anti_cheat.garp_interval_time)
+			ifname="br-lan"
+			lan_ip=$(uci get network.lan.ipaddr)
+			arping -I $ifname $lan_ip -g $interval_time &
+		fi
+		arp_defence -f &
+	fi
+}
+
+stop() {
+	arp_defence -f &
+	stop_arp_defence
+}
+
+restart(){
+	stop
+	start
+}

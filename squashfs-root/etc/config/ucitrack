@@ -1,0 +1,60 @@
+config network
+	option init network
+	list affects radvd
+	list affects dhcp
+	list affects guest_control
+	list affects device_manage
+	list affects safeset
+	list affects sharedwifi
+
+config sharedwifi
+	option init sharedwifi
+
+config wireless
+	list affects network
+
+config switch_vlan
+	list affects network
+
+config firewall
+	option init firewall
+
+config olsr
+	option init olsrd
+
+config dhcp
+	option init dnsmasq
+
+config dropbear
+	option init dropbear
+
+config fstab
+	option init fstab
+
+config system
+	option init led
+
+config ntpclient
+	option init ntpclient
+
+config tinyproxy
+	option init tinyproxy
+
+config uhttpd
+	option init uhttpd
+
+config guest_control
+	option init guest_control
+
+config device_manage
+	option init device_manage
+
+config safeset
+	option init safeset
+	list affects arp_defence
+
+config url_filter
+	option init url_filter
+
+config arp_defence
+	option init arp_defence

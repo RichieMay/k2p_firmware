@@ -1,0 +1,374 @@
+<style type="text/css">li.text-min{width:70px;margin-left:4px}li.text-con span.select-min{width:40px;padding:0 14px}li.text-con span.set-min{width:40px}#sel-opts-ulCloseHour{width:100%}#sel-opts-ulCloseMin{width:100%}#sel-opts-ulOpenHour{width:100%}#sel-opts-ulOpenMin{width:100%}li.select-first{margin-left:0}span.time-to{display:inline-block;vertical-align:middle;line-height:28px;font-size:14px;color:#4f5356;padding-left:2px;padding-right:2px}span.time-lists{display:inline-block;width:310px;height:36px;line-height:36px;text-align:right}li.option span{padding:0 4px}span.speed-unit{position:absolute;left:310px;width:200px;font-size:14px;line-height:34px;padding:0 .5em;color:#4f5356;text-align:left}div.disable-note{width:300px;margin:20px auto}p.disable-str{width:310px;font-size:14px;word-break:break-all;color:#767d82}</style>
+<%+guest-wifi-script%>
+<script type="text/javascript">
+(function(){
+	<%
+		local disable_wispon = "0"
+		local dev_para = {
+			dev_feature = {guest_wifi = {}, app_pc = {}, smart_connect = {}}
+		}
+		local dev_result = tpl_get_data(dev_para)
+		local pc_installed = dev_result[K_MODULE].dev_feature.app_pc.installed
+		local white_list_enable = "0"
+		local i
+		for i = 0, #pc_installed do
+			if "white-list" == pc_installed[i] then
+				white_list_enable = "1"
+			end
+		end
+
+		if nil == dev_result[K_MODULE].dev_feature or "0" == dev_result.module.dev_feature.guest_wifi.disable_wispon then
+			disable_wispon = "0"
+		else
+			disable_wispon = "1"
+		end
+
+		local wifi_timing = dev_result[K_MODULE].dev_feature.guest_wifi.support_timing
+		local smart_connect_cap = dev_result[K_MODULE].dev_feature.smart_connect.support
+		local speed_limiting = dev_result[K_MODULE].dev_feature.guest_wifi.support_speed_limit
+
+		local para = {wireless = {guest_wifi = {}}}
+
+		if "1" == wifi_timing then
+			para.wireless["guest_time_switch"] = {}
+		end
+
+		if "1" == speed_limiting then
+			para.wireless["guest_speed_limit"] = {}
+		end
+
+		if "1" == smart_connect_cap then
+			para.wireless["smart_connect"] = {}
+		end
+
+		if "1" == white_list_enable then
+			local white_list = {}
+			white_list["config"] = {}
+			para["white_list"] = white_list
+		end
+
+		if "1" == disable_wispon then
+			local wisp = {}
+			wisp["config"] = {}
+			para["wisp"] = wisp
+		end
+		local result = tpl_get_data(para, true)
+	-%>
+
+	var disableWispon = "<%=disable_wispon%>";
+	var whiteListEnable = "<%=white_list_enable%>";
+	var smartConnectCap = "<%=smart_connect_cap%>";
+	var smartConnectEnabled = 0;
+	var info = <%=result%>;
+	var guestInfo = info[K_MODULE];
+	if ("1" == disableWispon) {
+		var guestWisp = guestInfo.wisp.config;
+	}
+	if("1" == whiteListEnable){
+		var whiteListConfig = guestInfo.white_list.config;
+	}
+	if ("1" == smartConnectCap) {
+		smartConnectEnabled = guestInfo.wireless.smart_connect.enable;
+	}
+	var guestWifi = guestInfo.wireless.guest_wifi;
+	var guestTime = guestInfo.wireless.guest_time_switch;
+	var wifiTiming = <%=wifi_timing%>;
+	var speedLimit = guestInfo.wireless.guest_speed_limit;
+	var speedLimiting = <%=speed_limiting%>;
+
+	$("#VisitorSsid").val(guestWifi.ssid);
+	$("#VisitorPwd").val(guestWifi.password);
+
+	if("1" == disableWispon && 1 == guestWisp.enable){
+		$("div.disable-note").show();
+		$("p.disable-str").text(label.guestDisabledTip1);
+		$("#Save").hide();
+	}else if("1" == whiteListEnable && 1 == whiteListConfig.enable){
+		$("div.disable-note").show();
+		$("p.disable-str").text(label.guestDisabledTip2);
+		$("#Save").hide();
+	}else{
+		initSwitch("Switch", guestWifi.enable, function(state){
+			closeNote();
+
+			if (1 == state){
+				$("#Param").show();
+			}else{
+				$("#Param").hide();
+			}
+		});
+	}
+
+	if ("1" == wifiTiming){
+		var hourList = [];
+		var hour;
+		for (var i = 0; i < 24; i++){
+			if (i.toString().length == 1){
+				hour = "0" + i;
+			}else{
+				hour = i;
+			}
+			hourList.push({name : hour, value : i});
+		}
+
+		var minList = [];
+		var min, val;
+		for (var i = 0; i < 12; i++){
+			if (i < 2){
+				min = "0" + i * 5;
+			}else{
+				min = i * 5;
+			}
+			val = i * 5;
+			minList.push({name : min, value : val});
+		}
+		initSwitch("TimeSwitch", guestTime.enable, function(state){
+			if (1 == state){
+				$("#TimeSet").show();
+			}else{
+				$("#TimeSet").hide();
+				closeNote();
+			}
+		});
+		initSelect("CloseHour", hourList, getHour(guestTime.close_time));
+		initSelect("CloseMin", minList, getMinute(guestTime.close_time));
+		initSelect("OpenHour", hourList, getHour(guestTime.open_time));
+		initSelect("OpenMin", minList, getMinute(guestTime.open_time));
+	}else{
+		$("ul.time-switch").hide();
+	}
+
+	if ("1" == speedLimiting){
+		if (0 < parseInt(speedLimit.upload_limit)){
+			$("#UploadLimit").val(speedLimit.upload_limit);
+		}else{
+			$("#UploadLimit").attr("placeholder",label.unlimitSpeed);
+		}
+
+		if (0 < parseInt(speedLimit.download_limit)){
+			$("#DownloadLimit").val(speedLimit.download_limit);
+		}else{
+			$("#DownloadLimit").attr("placeholder",label.unlimitSpeed);
+		}
+
+		initSwitch("SpeedLimit", speedLimit.enable, function(state){
+			if (1 == state){
+				$("#SpeedSet").show();
+			}else{
+				$("#SpeedSet").hide();
+				closeNote();
+			}
+		});
+	}else{
+		$("ul.speed-limit").hide();
+	}
+
+	function getHour(time){
+		var hour = parseInt(time/3600);
+		return hour;
+	}
+
+	function getMinute(time){
+		var minute = parseInt(time%3600);
+		minute = parseInt(minute/60);
+		return minute;
+	}
+
+	function setTimeData(hour, minute){
+		var time;
+		time = hour * 3600;
+		time += minute * 60;
+		return time;
+	}
+
+	$("#Save").click(function(){
+		if (0 == $("#Switch").attr("data-value")){
+			showConfirm(label.closeGuest, function(choose){
+				if (choose){
+					saveGuest();
+				}
+			});
+		}else{
+			saveGuest();
+		}
+	});
+
+	function saveGuest(){
+		var para = {};
+		var guest_wifi = {};
+
+		para.wireless = {};
+		para.wireless.guest_wifi = guest_wifi;
+
+		guest_wifi.enable = $("#Switch").attr("data-value");
+		guest_wifi.ssid = $("#VisitorSsid").val();
+		guest_wifi.password = $("#VisitorPwd").val();
+
+		if ("1" == wifiTiming){
+			var guest_time_switch = {};
+			var closeHour = $("#CloseHour").attr("data-value");
+			var closeMinute = $("#CloseMin").attr("data-value");
+			var openHour = $("#OpenHour").attr("data-value");
+			var openMinute = $("#OpenMin").attr("data-value");
+			para.wireless.guest_time_switch = guest_time_switch;
+			guest_time_switch.enable = $("#TimeSwitch").attr("data-value");
+			guest_time_switch.close_time = setTimeData(closeHour, closeMinute);
+			guest_time_switch.open_time = setTimeData(openHour, openMinute);
+		}
+		if ("1" == guest_wifi.enable && handleGuestError(checkSsid(guest_wifi.ssid), showNote, smartConnectEnabled)){
+				return;
+		}
+		if ("1" == guest_wifi.enable && handleGuestError(checkPwd(guest_wifi.password), showNote, smartConnectEnabled)){
+				return;
+		}
+		if ("1" == speedLimiting){
+			var guest_speed_limit = {};
+			para.wireless.guest_speed_limit = guest_speed_limit;
+			guest_speed_limit.enable = $("#SpeedLimit").attr("data-value");
+			guest_speed_limit.upload_limit = $("#UploadLimit").val() || "0";
+			guest_speed_limit.download_limit = $("#DownloadLimit").val() || "0";
+
+			if ("1" == guest_wifi.enable && "1" == guest_speed_limit.enable){
+				if (handleError(checkSpeed(guest_speed_limit.upload_limit, "UP")) || handleError(checkSpeed(guest_speed_limit.download_limit, "DOWN"))){
+					return;
+				}
+			}
+		}
+
+		showLoading(label.saving);
+		apiSet(para, function(ret){
+			var code = ret[ERR_CODE];
+			if (E_NONE == code){
+				$.setTimeout(function(){
+					closeLoading();
+					if ("1" == speedLimiting){
+						stateman.go("pc.guestApp");
+					}
+				}, ret[K_MODULE].wireless.guest_wifi.wait_time * 1000);
+			}else{
+				handleGuestError(code, showNote, smartConnectEnabled);
+				closeLoading();
+			}
+		});
+	}
+})();
+</script>
+<div class="help hidden">
+	<ul class="help-content">
+		<li class="help-head">
+			<img class="app-icon" src="/luci-static/images/app-icon/guest.png?_=20180420151033" />
+			<span class="help-title">{%label.guestNet%}</span>
+		</li>
+		<div id="HelpGuest">
+		</div>
+	</ul>
+</div>
+<div class="head-con">
+	<img class="app-icon" src="/luci-static/images/app-icon/guest.png?_=20180420151033" />
+	<a href="javascript:history.go(-1);" class="head-btn-l">
+		<i class="head-btn icon icon_back"></i>
+		<span class="head-title">{%label.guestNet%}</span>
+	</a>
+</div>
+<div class="set-con below-head">
+	<ul class="set-con">
+		<li class="text-con">
+			<label class="desc-lbl">{%label.guestNet%}</label>
+			<span class="set-con-middle">
+				<span id="Switch" class="switch">
+					<i class="switch-circle"></i>
+				</span>
+			</span>
+		</li>
+	</ul>
+	<div id="Param" class="hidden">
+		<ul class="set-con">
+			<li class="text-con">
+				<label class="desc-lbl">{%label.wirelessName%}</label>
+				<input id="VisitorSsid" class="text hover" maxLength="32" value="" />
+			</li>
+		</ul>
+		<ul class="set-con">
+			<li class="text-con">
+				<label class="desc-lbl">{%label.wifiPwd%}</label>
+				<input id="VisitorPwd" class="text hover" type="password" autocomplete="new-password" maxLength="63" value="" /><i class="tip icon-eye" data-value="0"></i>
+			</li>
+		</ul>
+		<ul class="set-con speed-limit">
+			<li class="text-con">
+				<label class="desc-lbl">{%label.guestSpeedLimit%}</label>
+				<span class="set-con-middle">
+					<span id="SpeedLimit" class="switch">
+						<i class="switch-circle"></i>
+					</span>
+				</span>
+			</li>
+		</ul>
+		<div id="SpeedSet" class="hidden">
+			<ul class="set-con speed-limit">
+				<li class="text-con">
+					<span class="speed-unit">KB/s</span>
+					<label class="desc-lbl">{%label.guestUploadLimit%}</label>
+					<input id="UploadLimit" class="text hover" maxLength="32" value="" />
+				</li>
+			</ul>
+			<ul class="set-con speed-limit">
+				<li class="text-con">
+					<span class="speed-unit">KB/s</span>
+					<label class="desc-lbl">{%label.guestDownloadLimit%}</label>
+					<input id="DownloadLimit" class="text hover" maxLength="32" value="" />
+				</li>
+			</ul>
+		</div>
+		<ul class="set-con time-switch">
+			<li class="text-con">
+				<label class="desc-lbl">{%label.timingSwitch%}</label>
+				<span class="set-con-middle">
+					<span id="TimeSwitch" class="switch">
+						<i class="switch-circle"></i>
+					</span>
+				</span>
+			</li>
+		</ul>
+		<ul id="TimeSet" class="set-con time-switch">
+			<label id="SelectTitle" class="desc-lbl desc-time">{%label.closeTimePeriod%}</label>
+			<span class="time-lists">
+				<li class="text-con text-min select-first">
+					<span id="CloseHour" class="select select-min">
+						<span class="value sel-value set-min"></span>
+						<i class="tip icon_list-expansion"></i>
+					</span>
+				</li>
+				<li class="text-con text-min">
+					<span id="CloseMin" class="select select-min">
+						<span class="value sel-value set-min"></span>
+						<i class="tip icon_list-expansion"></i>
+					</span>
+				</li>
+				<span class="time-to">{%label.colon%}</span>
+				<li class="text-con text-min">
+					<span id="OpenHour" class="select select-min">
+						<span class="value sel-value set-min"></span>
+						<i class="tip icon_list-expansion"></i>
+					</span>
+				</li>
+				<li class="text-con text-min">
+					<span id="OpenMin" class="select select-min">
+						<span class="value sel-value set-min"></span>
+						<i class="tip icon_list-expansion"></i>
+					</span>
+				</li>
+			</span>
+		</ul>
+	</div>
+	<div class="disable-note hidden">
+		<p class="disable-str"></p>
+	</div>
+	<div class="err-note hidden">
+		<i class="err-icon icon_remind_line"></i>
+		<p class="note-str"></p>
+	</div>
+	<div class="btn-con">
+		<input id="Save" class="btn" type="button" value="{%btn.save%}" />
+	</div>
+</div>

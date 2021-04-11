@@ -1,0 +1,4 @@
+/etc/init.d/url_filter
+/etc/config/url_filter
+/usr/sbin/urlfilter
+/etc/uci-defaults/99_url_filter

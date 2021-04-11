@@ -1,0 +1,461 @@
+<style type="text/css">div.fun-btn{text-align:center;margin:0 .333rem;border-bottom:1px solid #DDD}input.list-btn{width:48%;font-size:.387rem;color:#575757;background-color:#FFF;border-radius:0;box-shadow:none}input.btn-selected{border-bottom:3px solid #fe9818;color:#fe9818}ul.list{padding:0 .347rem}li.list-item{font-size:0;height:1.6rem;overflow:hidden}div.left-con{float:left;width:20%}i.verdor-icon{font-size:1.4rem;display:inline-block;height:1.6rem;line-height:1.6rem}div.right-con{float:right;width:80%;height:1.58rem;border-bottom:1px solid #DDD}p.list-con-l{font-size:0;float:left;margin-top:.3rem;width:5rem}p.list-con-r{color:#949494;font-size:.308rem;float:right;max-width:2rem;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;text-align:right;line-height:1.58rem}span.list-con1{color:#575757;font-size:.347rem;display:inline-block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;width:5rem}span.list-con2{color:#949494;font-size:.347rem;margin-top:.2rem;display:inline-block}span.mac{margin-left:.2rem}ul.add-item{margin-top:.11rem;font-size:.91rem;margin-left:.57rem;text-align:left}ul span.all-move{font-size:.347rem;padding-right:.57rem;line-height:1.2rem;display:inline-block;vertical-align:top;float:right}.add-gray{color:#bfbfbf}.add-orange{color:#fe9818}div.device-img{width:2.067rem;height:2.2rem;margin:auto;margin-top:.71rem;background:url(/luci-static/images/list_empty.png?_=20180420151033) no-repeat;background-size:contain}p.device-tip{font-size:.387rem;color:#919395;text-align:center;margin-top:.507rem}i.icon_add{font-size:.91rem}p.disable-str{border-bottom:0;font-size:.32rem;color:#8f9396;line-height:.8rem}</style>
+<script type="text/javascript">
+(function(){
+	<%
+		local para = {
+			white_list = {config = {}},
+			device_manage = {client_list = {}},
+			shared_wifi = {config = {}}
+		}
+
+		local data = tpl_get_data(para, true)
+		local remote_ip = luci.http.getenv("REMOTE_ADDR")
+	-%>
+
+	var paraInit = <%=data%>;
+	var curIp = "<%=remote_ip%>";
+	var whiteLists = paraInit[K_MODULE].white_list.config.white_list;
+	var blockLists = paraInit[K_MODULE].white_list.config.block_list;
+	var deviceLists = paraInit[K_MODULE].device_manage.client_list;
+
+	function addArrayItem(array, oldArray, index, action){
+		array.push({});
+		var addIndex = array.length - 1;
+
+		array[addIndex].mac = oldArray[index].mac;
+		array[addIndex].brand = oldArray[index].brand;
+		array[addIndex].ip = oldArray[index].ip;
+		array[addIndex].name = oldArray[index].name;
+		array[addIndex].action = action;
+	}
+
+	function addHostToWhitelist(list){
+		var len = list.length;
+		var flag = 0;
+		for (var i = 0; i < len; i++){
+			if (curIp == list[i].ip && (1 == list[i].device_type || 2 == list[i].device_type)
+				 && 1 == list[i].online_status && 1 == list[i].internet_enable){
+				for(var j = 0; j < whiteLists.length; j++){
+					if(list[i].mac == whiteLists[j].mac){
+						flag = 1;
+						break;
+					}else{
+						flag = 0;
+					}
+				}
+
+				if(flag == 0){
+					addArrayItem(whiteLists, list, i, "add");
+				}
+
+				for(var m = 0; m < blockLists.length; m++){
+					if(list[i].mac == blockLists[m].mac){
+						blockLists.splice(m, 1);
+						break;
+					}
+				}
+			}
+		}
+	}
+
+	addHostToWhitelist(deviceLists);
+
+	function init(result){
+		var errNo = result[ERR_CODE];
+		var ret;
+		if (E_NONE == errNo){
+			ret = result[K_MODULE];
+		}else{
+			console.log(result);
+			return;
+		}
+
+		var enable = ret.white_list.config.enable;
+		var sharedInfo = ret.shared_wifi.config;
+
+		if (1 == sharedInfo.enable){	//开启共享WiFi，白名单不可用
+			$("#Param").hide();
+			$("p.desc-tetail").hide();
+			$("div.close-bg").hide();
+			$("#Save").hide();
+			$("ul.disable-note").show();
+		}else{
+			if(enable == 1){
+				$("#WhiteListTab i.add-orange").removeClass("add-orange").addClass("add-gray");
+			}
+
+			initSwitch("Switch", enable, function(state){
+				if (1 == state){
+					$("#Param").show();
+					$("div.close-bg").hide();
+				}else{
+					$("#Param").hide();
+					$("div.close-bg").show();
+				}
+			});
+		}
+	}
+
+	init(paraInit);
+
+	function initWhiteListEntry(client){
+		var devName = htmlEscape(client.name);
+		var icon;
+		if(client.brand){
+			icon = "icon_" + getAlias(client.brand);
+		}else{
+			icon = "icon_" + getVendor(client.mac);
+		}
+		var ipStr;
+		if(client.ip == ""){
+			ipStr = "";
+		}else{
+			ipStr = "IP: " + client.ip;
+		}
+		var buttonStr;
+		if (curIp == client.ip){
+			buttonStr = '<span class="self-host">{%label.selfHost%}</span>';
+		}else{
+			buttonStr = '<span class="color-orange remove-white-item" data-value="' + client.mac +'">' + btn.delete + '</span>';
+		}
+
+		return '<li class="list-item" data-value="' + client.mac +'">' +
+					'<div class="device-ip hidden" data-value="' + client.ip +'"></div>' +
+					'<div class="left-con"><i class="verdor-icon ' + icon + '"></i></div>' +
+					'<div class="right-con">' +
+						'<p class="list-con-l">' +
+							'<span class="list-con1">' + devName + '</span>'+
+							'<span class="list-con2">{%label.mac%}<span class="mac" data-value="' + client.mac +'">' + client.mac + '</span></span>' +
+						'</p>' +
+						'<p class="list-con-r">' + buttonStr + '</p>' +
+					'</div>' +
+				'</li>';
+	}
+
+	function initInterceptListEntry(client, idx){
+		var icon;
+		if(client.brand){
+			icon = "icon_" + getAlias(client.brand);
+		}else{
+			icon = "icon_" + getVendor(client.mac);
+		}
+		return '<li class="list-item" data-value="' + client.mac +'">' +
+					'<div class="left-con"><i class="verdor-icon ' + icon + '"></i></div>' +
+					'<div class="right-con">' +
+						'<p class="list-con-l">' +
+							'<span class="list-con1">' + client.blockTime + '</span>'+
+							'<span class="list-con2">{%label.mac%}<span class="mac" data-value="' + client.mac +'">' + client.mac + '</span></span>' +
+						'</p>' +
+						'<p class="list-con-r color-orange add-white-item" data-value="' + client.mac +'">' + btn.addToWhiteList + '</p>' +
+					'</div>' +
+				'</li>';
+	}
+
+	function getFormatDate(){
+		var date = new Date();
+		var seperator1 = "-";
+		var seperator2 = ":";
+		var month = date.getMonth() + 1;
+		var strDate = date.getDate();
+		var strHour = date.getHours();
+		var strMin = date.getMinutes();
+
+		if(month >= 1 && month <= 9){
+			month = "0" + month;
+		}
+		if(strDate >= 0 && strDate <= 9){
+			strDate = "0" + strDate;
+		}
+		if(strHour >= 0 && strHour <= 9){
+			strHour = "0" + strHour;
+		}
+		if(strMin >= 0 && strMin <= 9){
+			strMin = "0" + strMin;
+		}
+		var currentdate = date.getFullYear() + seperator1 + month + seperator1 + strDate +
+				" " + strHour + seperator2 + strMin;
+
+		return currentdate;
+	}
+
+	var delWhiteList = [];
+	function initWhiteList(clients){
+		$("#WhiteTab li").remove();
+		var len = clients.length;
+		for (var i = 0; i < len; i++){
+			$("#WhiteTab").append(initWhiteListEntry(clients[i]));
+		}
+
+		$(".remove-white-item").click(function(){
+			var node = $(this).parents("#WhiteTab li");
+			var addMac = node.attr("data-value");
+			node.remove();
+
+			for (var i = 0; i < len; i++){
+				if(addMac == clients[i].mac){
+					delWhiteList.push(addMac);
+					addArrayItem(blockLists, clients, i, "del");
+
+					blockLists[blockLists.length - 1].blockTime = getFormatDate();
+					whiteLists.splice(i, 1);
+					break;
+				}
+			}
+			initWhiteList(whiteLists);
+			initInterceptList(blockLists);
+		});
+	}
+
+	function initInterceptList(clients){
+		$("#InterceptTab li").remove();
+		var len = clients.length;
+		for (var i = 0; i < len; i++){
+			$("#InterceptTab").append(initInterceptListEntry(clients[i]));
+		}
+
+		$(".add-white-item").click(function(){
+			var node = $(this).parents("#InterceptTab li");
+			var addMac = node.attr("data-value");
+			node.remove();
+
+			for (var i = 0; i < len; i++){
+				if(addMac == clients[i].mac){
+					for(var j = 0; j < delWhiteList.length; j++){
+						if(addMac == delWhiteList[j]){
+							delWhiteList.splice(j, 1);
+						}
+					}
+
+					addArrayItem(whiteLists, clients, i, "add");
+					blockLists.splice(i, 1);
+					break;
+				}
+			}
+			initWhiteList(whiteLists);
+			initInterceptList(blockLists);
+		});
+	}
+
+	$("#WhiteList").click(function(){
+		$("#DeviceEmpty").hide();
+		$("#WhiteListTab").show();
+		$("#InterceptListTab").hide();
+		$("#WhiteList").show().addClass("btn-selected");
+		$("#InterceptList").show().removeClass("btn-selected");
+	});
+
+	$("#InterceptList").click(function(){
+		$("#InterceptListTab").show();
+		$("#WhiteListTab").hide();
+		$("#WhiteList").show().removeClass("btn-selected");
+		$("#InterceptList").show().addClass("btn-selected");
+		if ($("#InterceptTab li").length == 0){
+			$("#DeviceEmpty").show();
+			$("#EmptyTip").text(label.noneDevice);
+			$("#InterceptListTab span.all-move").hide();
+		}else{
+			$("#DeviceEmpty").hide();
+			$("#InterceptListTab span.all-move").show();
+		}
+	});
+
+	$("#WhiteListAdd").click(function(){
+		var data = {
+			device_manage:{"client_list":null},
+		};
+		apiGet(data, function(result){
+			deviceLists = result[K_MODULE].device_manage.client_list;
+		});
+
+		var val = sessionLS.getItem("addItemMac") || "{}";
+		var addlist = JSON.parse(val);
+
+		for (var k in addlist){
+			var val = addlist[k];
+			checkOnlineList(deviceLists, val);
+		}
+
+		initWhiteList(whiteLists);
+		initInterceptList(blockLists);
+		$("#WhiteList").click();
+	});
+
+	function checkOnlineList(list, mac){
+		var len = list.length;
+		for (var i = 0; i < len; i++){
+			if (mac != list[i].mac){
+				continue;
+			}else{
+				addArrayItem(whiteLists, list, i, "add");
+				for(var m = 0; m < blockLists.length; m++){
+					if(mac == blockLists[m].mac){
+						blockLists.splice(m, 1);
+						break;
+					}
+				}
+			}
+		}
+	}
+
+	$("#WhiteListTab i.add-orange").click(function(){
+		var setValue = {};
+		var data = [];
+		$("#WhiteTab li").each(function(){
+			var mac = $(this).attr("data-value");
+			data.push(mac);
+		});
+
+		for(var i = 0; i < data.length; i++){
+			setValue[i] = data[i];
+		}
+		sessionLS.removeItem("whiteListMac");
+		var macToString = JSON.stringify(setValue);
+		sessionLS.setItem("whiteListMac", macToString);
+
+		loadWidget("onlineList.htm");
+	});
+
+	$("#WhiteListTab span.all-move").click(function(){
+		$("#WhiteTab div.device-ip").each(function(){
+			var mac = $(this).parents("#WhiteTab li").attr("data-value");
+
+			if(curIp != $(this).attr("data-value")){
+				$(this).parents("#WhiteTab li").remove();
+
+				for (var i = 0; i < whiteLists.length; i++){
+					if(mac == whiteLists[i].mac){
+						delWhiteList.push(mac);
+						addArrayItem(blockLists, whiteLists, i, "del");
+
+						blockLists[blockLists.length - 1].blockTime = getFormatDate();
+						whiteLists.splice(i, 1);
+						break;
+					}
+				}
+			}
+		});
+
+		initWhiteList(whiteLists);
+		initInterceptList(blockLists);
+	});
+
+	var clearAll = "0";
+	$("#InterceptListTab span.all-move").click(function(){
+		clearAll = "1";
+		$("#InterceptTab li").remove();
+		blockLists.splice(0, blockLists.length);
+		$("#InterceptListTab span.all-move").hide();
+	});
+
+	$("#Save").click(function(){
+		var para = {};
+		para.white_list = {};
+
+		var config = {};
+		para.white_list.config = config;
+		config.enable = $("#Switch").attr("data-value");
+		if (config.enable == "1"){
+			config.clear_all = clearAll;
+
+			config.white_list = [];
+			config.block_list = [];
+
+			var addMac = [];
+
+			for (var i = 0; i < blockLists.length; i++){
+				config.block_list[i] = {};
+				config.block_list[i].mac = blockLists[i].mac;
+			}
+
+			$("#WhiteTab li").each(function(){
+				var mac = $(this).attr("data-value");
+				addMac.push(mac);
+			});
+
+			var len = delWhiteList.length + addMac.length
+			for(var i = 0; i < len; i++){
+				config.white_list[i] = {};
+				if(i < delWhiteList.length){
+					config.white_list[i].mac = delWhiteList[i];
+					config.white_list[i].action = "del";
+				}else{
+					config.white_list[i].mac = addMac[i - delWhiteList.length];
+					config.white_list[i].action = "add";
+				}
+			}
+		}
+
+		showLoading(label.saving);
+		apiSet(para, function(ret){
+		var code = ret[ERR_CODE];
+			if (E_NONE == code){
+				$.setTimeout(function(){
+					closeLoading();
+					stateman.go("whiteList");
+				}, ret[K_MODULE].white_list.config.wait_time * 1000);
+			}else{
+				handleError(code);
+				closeLoading();
+			}
+		});
+	});
+
+	initWhiteList(whiteLists);
+	initInterceptList(blockLists);
+})();
+</script>
+<div class="head-con">
+	<a href="javascript:history.go(-1);" class="head-btn-l"><i class="head-btn icon icon_back"></i></a>
+	<h1 class="head-title">{%label.whiteList%}</h1>
+</div>
+<div class="set-con below-head">
+	<ul class="blank-bg"></ul>
+	<ul class="set-con">
+		<div class="switch-con">
+			<label class="desc-title">{%label.whiteList%}</label>
+			<span id="Switch" class="switch">
+				<i class="switch-circle"></i>
+			</span>
+		</div>
+		<p class="desc-tetail">{%label.whiteListTip%}</p>
+	</ul>
+	<div class="close-bg">
+		<i class="close-list"></i>
+		<p class="close-tip">{%label.whiteListClose%}</p>
+	</div>
+	<div id="Param" class="hidden">
+		<div class="fun-btn">
+			<input id="WhiteList" class="btn list-btn btn-selected" type="button" value="{%btn.whiteList%}"/>
+			<input id="WhiteListAdd" class="btn hidden" type="button" />
+			<input id="InterceptList" class="btn list-btn" type="button" value="{%btn.interceptDevice%}"/>
+		</div>
+		<div id="WhiteListTab" class="tab-con">
+			<ul id="WhiteTab" class="list"></ul>
+			<ul class="add-item">
+				<i class="icon_add add-orange"></i>
+				<span class="all-move add-orange">{%label.deleteAll%}</span>
+			</ul>
+		</div>
+		<div id="InterceptListTab" class="tab-con hidden">
+			<ul id="InterceptTab" class="list"></ul>
+			<ul class="add-item">
+				<i class="icon_add add-orange invisible"></i>
+				<span class="all-move add-orange">{%label.onekeyDelete%}</span>
+			</ul>
+		</div>
+		<div id="DeviceEmpty" class="hidden">
+			<div class="device-img"></div>
+			<p id="EmptyTip" class="device-tip"></p>
+		</div>
+	</div>
+	<ul class="set-con disable-note hidden">
+		<p class="disable-str">{%label.sharedWifiDisabledTip2%}</p>
+	</ul>
+	<div class="err-note hidden">
+		<i class="err-icon icon_remind_line"></i>
+		<p class="note-str"></p>
+	</div>
+	<div class="btn-con">
+		<input id="Save" class="btn" type="button" value="{%btn.save%}" />
+	</div>
+</div>

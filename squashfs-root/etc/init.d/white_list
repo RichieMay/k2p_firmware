@@ -1,0 +1,14 @@
+#!/bin/sh /etc/rc.common
+# Copyright (C) 2014 OpenWrt.org
+
+START=99
+
+start() {
+	white_list_status=`uci get white_list.comm_info.enable`
+	if [ "$white_list_status" = "1" ]; then
+		/usr/bin/white_list &
+	fi
+}
+stop() {
+	killall -9 white_list
+}

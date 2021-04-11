@@ -1,0 +1,57 @@
+#!/bin/sh
+
+uci get collect.main.uploaded_fixed >/dev/null 2>/dev/null
+if [ $? -eq 1 ];then
+	uci set collect.main.uploaded_fixed=0
+fi
+
+uci get collect.main.wireless_md5 >/dev/null 2>/dev/null
+if [ $? -eq 1 ];then
+	uci set collect.main.wireless_md5=0
+fi
+
+uci get collect.main.reboot_flag >/dev/null 2>/dev/null
+if [ $? -eq 1 ];then
+	uci set collect.main.reboot_flag=0
+fi
+
+uci get collect.main.log >/dev/null 2>/dev/null
+if [ $? -eq 1 ];then
+	uci set collect.main.log=0
+fi
+
+uci get collect.main.parent_used >/dev/null 2>/dev/null
+if [ $? -eq 1 ];then
+	uci set collect.main.parent_used=0
+fi
+
+uci get collect.main.timereboot_hour >/dev/null 2>/dev/null
+if [ $? -eq 1 ];then
+	uci set collect.main.timereboot_hour=0
+fi
+
+uci get collect.main.timereboot_minute >/dev/null 2>/dev/null
+if [ $? -eq 1 ];then
+	uci set collect.main.timereboot_minute=0
+fi
+
+uci get collect.main.diagnose_day_used >/dev/null 2>/dev/null
+if [ $? -eq 1 ];then
+	uci set collect.main.diagnose_day_used=0
+fi
+
+uci get collect.main.diagnose_ever_used >/dev/null 2>/dev/null
+if [ $? -eq 1 ];then
+	uci set collect.main.diagnose_ever_used=0
+fi
+
+uci get collect.main.diagnose_wan_trouble >/dev/null 2>/dev/null
+if [ $? -eq 1 ];then
+	uci set collect.main.diagnose_wan_trouble=0
+fi
+
+uci get collect.main.diagnose_net_trouble >/dev/null 2>/dev/null
+if [ $? -eq 1 ];then
+	uci set collect.main.diagnose_net_trouble=0
+fi
+uci commit collect

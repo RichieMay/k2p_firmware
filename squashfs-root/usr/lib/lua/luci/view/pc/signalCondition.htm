@@ -1,0 +1,131 @@
+<style type="text/css">div.signal-bg{width:181px;height:115px;margin:auto;margin-top:82px;background:url(/luci-static/images/signal_bg.png?_=20180420151033) no-repeat;background-size:contain}div.signal-selcet{width:29px;height:38px;top:-33px;left:34px;object-fit:contain;position:absolute;background:url(/luci-static/images/signal_ok.png?_=20180420151033) no-repeat;background-size:contain}div.signal-first{left:34px}div.signal-second{left:216px}div.signal-third{left:396px}div.signal-set{width:440px;height:50px;border-radius:25px;margin:auto;background-color:#fff;border:solid 1px #dedede;position:relative}div.signal-line{width:371px;height:8px;margin:21px auto;border-radius:4px;background-color:#f0f0f0;border:solid 1px #dedede}ul.signal{width:570px;margin:-34px auto;text-align:center}li.signal{display:inline-block;width:181px;position:relative}li div.signal-dis{width:15px;height:15px;margin:auto;top:-27px;border-radius:50%;background-color:#fff;border:solid 1px #dedede;position:relative;z-index:999;cursor:pointer}li div.signal-en{width:27px;height:27px;margin:auto;border-radius:50%;background-color:#85bd22;top:-5px;position:relative}li span.signal-dis{font-size:14px;color:#2a2c32;opacity:.7;margin-top:8px;display:inline-block}li span.signal-en{font-size:14px;color:#2a2c32;opacity:1;margin-top:8px;display:inline-block}div.err-note{margin:60px auto}</style>
+<script type="text/javascript">
+(function(){
+	<%
+		local para = {
+			signal_condition = {config = {}},
+			dev_feature = {signal_condition = {}}
+		}
+
+		local result = tpl_get_data(para, true)
+	-%>
+
+	var result = <%=result%>;
+	var rebootConfirm = (result[K_MODULE].dev_feature.signal_condition.reboot_confirm)?result[K_MODULE].dev_feature.signal_condition.reboot_confirm:"0";
+
+	var power = result[K_MODULE].signal_condition.config;
+
+	var siganlSwitch = power.signal_intensity;
+
+	function signalInit(val){
+		$("div.signal-en").hide();
+		$("span.signal-dis").removeClass("signal-en");
+		$("#SignalSelect").removeClass("signal-first").removeClass("signal-second").removeClass("signal-third");
+		if ("1" == val){
+			$("#SignalSelect").addClass("signal-first");
+			$("#SignalFirstTip").addClass("signal-en");
+			$("#SignalFirstSel").show();
+		}else if("2" == val){
+			$("#SignalSelect").addClass("signal-second");
+			$("#SignalSecondTip").addClass("signal-en");
+			$("#SignalSecondSel").show();
+		}else{
+			$("#SignalSelect").addClass("signal-third");
+			$("#SignalThridTip").addClass("signal-en");
+			$("#SignalThridSel").show();
+		}
+	}
+
+	signalInit(siganlSwitch);
+
+	$("li div.signal-dis").click(function(){
+		var signalVal = $(this).attr("data-value");
+		var data = {};
+		var para = {};
+		para.signal_condition = {};
+		para.signal_condition.config = data;
+		data.signal_intensity= signalVal;
+		if("1" == rebootConfirm){
+			showConfirm(label.signalConditionRebootTip, function(choose){
+				if (choose){
+					saveSignal(para, signalVal);
+				}
+			});
+		}else{
+			saveSignal(para, signalVal);
+		}
+
+	});
+	function saveSignal(para, val){
+		signalInit(val);
+		showLoading(label.saving);
+		apiSet(para, function(ret){
+			var code = ret[ERR_CODE];
+			handleError(code, showNote)?closeLoading():refreshSignal(ret);
+		});
+	}
+	function refreshSignal(ret){
+		if("1" == rebootConfirm){
+			showProgressBar(label.signalCondition, label.rebooting, ROUTER.time.reboot, function(){
+				window.location.href = "http://" + ROUTER.domain;
+			});
+			$.setTimeout(function(){
+				// 检测LAN是否可以连接DUT
+				lanDetecting(function(){
+					window.location.href = "http://" + ROUTER.domain;
+				});
+			}, ROUTER.time.detectDelay);
+		}else{
+			var time = getMaxWaitTime(ret);
+			$.setTimeout(function(){
+				closeLoading();
+			}, time * 1000);
+		}
+	}
+})();
+</script>
+<div class="help hidden">
+	<ul class="help-content">
+		<li class="help-head">
+			<img class="app-icon" src="/luci-static/images/app-icon/signal_condition.png?_=20180420151033" />
+			<span class="help-title">{%label.signalCondition%}</span>
+		</li>
+		<div id="HelpSignalCondition">
+		</div>
+	</ul>
+</div>
+<div class="head-con">
+	<img class="app-icon" src="/luci-static/images/app-icon/signal_condition.png?_=20180420151033" />
+	<a href="javascript:history.go(-1);" class="head-btn-l">
+		<i class="head-btn icon icon_back"></i>
+		<span class="head-title">{%label.signalCondition%}</span>
+	</a>
+</div>
+<div class="set-con below-head">
+	<div class="signal-bg"></div>
+	<div class="signal-set">
+		<div id="SignalSelect" class="signal-selcet"></div>
+		<div class="signal-line"></div>
+	</div>
+	<ul class="signal">
+		<li class="signal signal-first">
+			<div id="SignalFirstSel" class="signal-en hidden"></div>
+			<div id="SignalFirstBtn" class="signal-dis" data-value="1"></div>
+			<span id="SignalFirstTip" class="signal-dis">{%label.signalIntensity1%}</span>
+		</li>
+		<li class="signal signal-second">
+			<div id="SignalSecondSel" class="signal-en hidden"></div>
+			<div id="SignalFirstBtn" class="signal-dis" data-value="2"></div>
+			<span id="SignalSecondTip" class="signal-dis">{%label.signalIntensity2%}</span>
+		</li>
+		<li class="signal signal-third">
+			<div id="SignalThridSel" class="signal-en hidden"></div>
+			<div id="SignalFirstBtn" class="signal-dis" data-value="3"></div>
+			<span id="SignalThridTip" class="signal-dis">{%label.signalIntensity3%}</span>
+		</li>
+	</ul>
+	<div class="err-note hidden">
+		<i class="err-icon icon_remind_line"></i>
+		<p class="note-str"></p>
+	</div>
+</div>

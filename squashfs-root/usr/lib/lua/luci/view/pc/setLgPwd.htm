@@ -1,0 +1,151 @@
+<style type="text/css">#Help{width:25%}li.current-step h2{background-color:#1bd34b}div.right-set-con p.set-con-desc{padding-top:20px;margin-left:50px;font-size:15px;color:#4f5356}label.desc-lbl-guide{position:relative;margin-right:12px;width:72px;margin-left:0}</style><script type="text/javascript">
+(function(){
+	$("#Save").click(function(){
+		var pwd = $("#PwdNew").val();
+		var confirmPwd = $("#PwdCfm").val();
+
+		if (handleError(checkPwdNew(pwd, confirmPwd))){
+			return;
+		}
+
+		var pwdEncoded = new Base64().base64encode(pwd);
+		var data = {};
+
+		data.username = "admin";
+		data.password = pwdEncoded;
+
+		showLoading(label.saving);
+
+		apiRegister(data, function(ret){
+			var code = ret[ERR_CODE];
+			$.setTimeout(function(){
+				handleError(code, showAlert)?refreshError(code):refreshEnone();
+			}, 2000);
+		});
+	});
+
+	function checkPwdNew(pwdNew, pwdCfm){
+		var err = checkStrFormat(pwdNew);
+
+		switch(err){
+		case E_STRINGBLANK:
+			return E_PWD_NEW_BLANK;
+		case E_STRINGFORMAT:
+			return E_PWD_NEW_ILLEGAL;
+		}
+
+		if (checkStrLen(pwdNew, 63, 5)){
+			return E_PWD_NEW_LEN;
+		}
+
+		if (pwdNew != pwdCfm){
+			return E_PWD_NEW_REPEAT_SAME;
+		}
+
+		return E_NONE;
+	}
+
+	function refreshError(code){
+		showAlert(getErrTip(code), function(){
+			goNext();
+		});
+	}
+	function goNext(){
+		stateman.emit("reset");
+	}
+	function refreshEnone(){
+		if (1 >= ROUTER.guideList.length){
+			var para = {};
+			para.welcome = {};
+			para.welcome.config = {};
+			para.welcome.config.guide = "0";
+			apiSet(para, function(ret){
+					var time = getMaxWaitTime(ret);
+					$.setTimeout(function(){
+						closeLoading();
+						goNext();
+					}, time * 1000);
+			});
+		} else {
+			closeLoading();
+			goNext();
+		}
+	}
+
+	var scroll = new NiceScroll("GuideCon");
+	scroll.init();
+})();
+</script>
+
+<div class="help hidden">
+	<ul class="help-content">
+		<div id="HelpSetLgPwd">
+		</div>
+	</ul>
+</div>
+<%+language%>
+<div class="head">
+	<div class="left-logo">
+		<img class="logo" src="/luci-static/images/phicomm.png?_=20180420151033" alt="phicomm" />
+		<span class="brand">{%label.phicomm%}</span>
+	</div>
+	<i id="HelpIcon" class="icon guide-icon icon_help"></i>
+</div>
+<div class="guide">
+	<div class="left-image-con center-container">
+		<div class="image-con vertical-center">
+			<h1 class="guide-title">{%label.adminPwd%}</h1>
+			<img class="left-image" src="/luci-static/images/password.png?_=20180420151033" alt="{%label.setAdminPwd%}" />
+		</div>
+	</div>
+	<div id="GuideCon" class="set-con right-set-con center-container">
+		<h1 class="desc-title">{%label.adminPwd%}</h1>
+		<div class="vertical-center">
+			<p class="set-con-desc">{%label.setAdminPwd%}</p>
+			<ul class="set-con">
+				<li class="text-con text-con-guide">
+					<label class="desc-lbl desc-lbl-guide">{%label.adminPwd%}</label>
+					<input class="text ime-mode-n hover" type="password" autocomplete="new-password" maxLength="63" id="PwdNew" value="" placeholder="{%label.pwdLenTip%}" />
+					<i class="tip icon-eye" data-value="0"></i>
+				</li>
+			</ul>
+			<ul class="set-con">
+				<li class="text-con text-con-guide">
+					<label class="desc-lbl desc-lbl-guide">{%label.confirmPwd%}</label>
+					<input class="text ime-mode-n hover" type="password" autocomplete="new-password" maxLength="63" id="PwdCfm" value="" placeholder="{%label.pwdLenTip%}" />
+					<i class="tip icon-eye" data-value="0"></i>
+				</li>
+			</ul>
+			<div class="err-note err-guide hidden">
+				<i class="err-icon icon_remind_line"></i>
+				<p class="note-str"></p>
+			</div>
+			<div class="guide-btn-con">
+				<input id="Save" class="btn guide-btn" type="button" value="{%btn.nextStep%}" />
+			</div>
+		</div>
+	</div>
+</div>
+<%
+	local dev_para = {
+		dev_feature = {mode_switch = {}}
+	}
+	local dev_result = tpl_get_data(dev_para)
+	local mode_switch_cap = dev_result[K_MODULE].dev_feature.mode_switch.support
+
+	local para = {}
+	local footer = "footer"
+	if "1" == mode_switch_cap then
+		local mode_switch = {}
+		mode_switch["config"] = {}
+		para["mode_switch"] = mode_switch
+		local result = tpl_get_data(para)
+		local info = result[K_MODULE].mode_switch.config
+		if info.mode == "ap" then
+			footer = "footer-welcome"
+		else
+			footer = "footer"
+		end
+	end
+%>
+<% include(footer) %>

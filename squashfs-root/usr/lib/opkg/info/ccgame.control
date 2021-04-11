@@ -1,0 +1,8 @@
+Package: ccgame
+Version: 1
+Depends: libc, phicomm_libs, xl2tpd, tcpping, libubox-lua, curl, luci-app-game
+Source: package/phicomm/ccgame
+Section: Phicomm Properties
+Architecture: ramips_1004kc
+Installed-Size: 17728
+Description:  unknown

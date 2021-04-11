@@ -1,0 +1,10 @@
+#!/bin/sh /etc/rc.common
+
+START=50
+
+start() {
+/etc/vlmcsd/vlmcsd -i /etc/vlmcsd/vlmcsd.ini -p /tmp/vlmcsd.pid -l /tmp/vlmcsd.log
+}
+stop() {
+ killall -9 vlmcsd
+}

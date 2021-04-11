@@ -1,0 +1,2 @@
+/usr/sbin/garbage_clean
+/etc/uci-defaults/99-garbage_clean

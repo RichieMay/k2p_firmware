@@ -1,0 +1,4 @@
+/usr/lib/lua/luci/controller/admin/backup_reset_plt.lua
+/usr/lib/lua/luci/controller/admin/backup_reset.lua
+/usr/lib/lua/luci/view/pc/backupReset.htm
+/www/luci-static/images/app-icon/restore.png

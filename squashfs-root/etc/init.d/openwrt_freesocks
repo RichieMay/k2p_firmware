@@ -1,0 +1,111 @@
+#!/bin/sh /etc/rc.common
+#
+# Copyright (C) 2018 openwrt-freesocks
+#
+# This is free software, licensed under the GNU General Public License v3.
+# See /LICENSE for more information.
+#
+
+START=99
+SERVICE_USE_PID=1
+
+EXTRA_COMMANDS="status"
+EXTRA_HELP="	status	show the service status"
+
+NAME=freesocks
+TGZ_PATH=/usr/share/freesocks/freesocks.tgz
+BIN_DIR=/var/etc
+BIN_PATH=$BIN_DIR/$NAME
+CONF=$BIN_DIR/$NAME.json
+GFW_CONF=/etc/freesocks.d/gfwlist.conf
+DNSMASQ_GFW_CONF=/tmp/dnsmasq.d/gfwlist.conf
+
+boot() {
+  start
+}
+
+check_running(){
+    PID=`ps | grep -v grep | grep -i "${BIN_PATH}.\+-" | awk '{print $1}'`
+    if [ ! -z "$PID" ]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+#uci_get_config_by_type section_type section_index option
+uci_get_config_by_type() {
+	local value=`uci get $NAME.@$1[$2].$3`
+	echo $value
+}
+
+generate_conf(){
+	server_index=$(uci_get_config_by_type global 0 server_index)
+	if [ $server_index -lt 0 ]; then
+		rm -rf $CONF
+		return
+	fi
+
+	cat <<-EOF >$CONF	
+		{
+		    "listen_ip": "0.0.0.0",
+		    "listen_port": $(uci_get_config_by_type global 0 redir_port),
+		    "redirect": true,
+		    "server_ip": "$(uci_get_config_by_type servers $server_index server_ip)",
+		    "server_port": $(uci_get_config_by_type servers $server_index server_port),
+		    "key": "$(uci_get_config_by_type servers $server_index key)"
+		}
+	EOF
+}
+
+status(){
+    check_running
+    if [ $? -eq 0 ]; then
+        echo "$NAME (pid $PID) is running..."
+    else
+        echo "$NAME is stopped"
+    fi
+}
+
+restart () {
+  stop
+  start
+}
+
+start() {
+  #先解压安装包，再运行程序
+  tar -zxf $TGZ_PATH -C $BIN_DIR
+  
+  generate_conf
+  if [ ! -r $CONF ]; then
+      echo "file:$CONF is not exist..."
+      exit 1
+  fi
+  
+  # 将gfwlist软连接到dnsmasq配置中,然后重启dnsmasq使其生效
+  if [ ! -r $DNSMASQ_GFW_CONF ]; then
+      ln -s $GFW_CONF $DNSMASQ_GFW_CONF
+      /etc/init.d/dnsmasq restart
+  fi
+  
+  check_running
+  if [ $? -eq 0 ]; then
+      echo "$NAME (pid $PID) is already running..."
+      exit 0
+  else
+      $BIN_PATH -c $CONF > /dev/null 2>&1 &
+  fi
+}
+
+stop() {
+  # 将gfwlist从dnsmasq配置中删除,然后重启dnsmasq使其生效
+  if [ -r $DNSMASQ_GFW_CONF ]; then
+      rm -rf $DNSMASQ_GFW_CONF
+      /etc/init.d/dnsmasq restart
+  fi
+  
+  check_running
+  if [ $? -eq 0 ]; then
+      kill -SIGINT $PID > /dev/null 2>&1 &
+  fi
+}

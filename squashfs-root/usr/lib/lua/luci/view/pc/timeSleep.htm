@@ -1,0 +1,204 @@
+<style type="text/css">li.text-min{width:146px}li.text-con span.select-min{width:118px;padding:0 14px}li.text-con span.set-min{width:118px}#sel-opts-ulCloseHour{width:100%}#sel-opts-ulCloseMin{width:100%}#sel-opts-ulOpenHour{width:100%}#sel-opts-ulOpenMin{width:100%}span.time-to{display:inline-block;vertical-align:middle;line-height:28px;font-size:14px;color:#4f5356;padding-left:2px;padding-right:2px}li.option span{padding:0 6px}div.set-select-two{margin:0 auto;width:600px}div.disable-note{width:300px;margin:20px auto}p.disable-str{width:310px;font-size:14px;word-break:break-all;color:#767d82}</style>
+<script type="text/javascript">
+(function(){
+	<%
+		local para = {
+			time_sleep = {config = {}},
+			shared_wifi = {config = {}}
+		}
+
+		local result = tpl_get_data(para, true)
+	-%>
+	var info = <%=result%>;
+
+	init(info);
+
+	function init(result){
+		var errNo = result[ERR_CODE];
+		var ret;
+		if (E_NONE == errNo){
+			ret = result[K_MODULE];
+		}else{
+			console.log(result);
+			return;
+		}
+		var timeInfo = ret.time_sleep.config;
+		var sharedInfo = ret.shared_wifi.config;
+
+		if (1 == sharedInfo.enable){	//开启共享WiFi，定时休眠不可用
+			$("#Save").hide();
+			$("div.disable-note").show();
+		}else{
+			initSwitch("Switch", timeInfo.enable, function(state){
+				closeNote();
+
+				if (1 == state){
+					$("#Param").show();
+				}else{
+					$("#Param").hide();
+				}
+			});
+		}
+
+		var hourList = [];
+		var hour;
+		for (var i = 0; i < 24; i++){
+			if (i.toString().length == 1){
+				hour = "0" + i;
+			}else{
+				hour = i;
+			}
+			hourList.push({name : hour, value : i});
+		}
+
+		var minList = [];
+		var min, val;
+		for (var i = 0; i < 12; i++){
+			if (i < 2){
+				min = "0" + i * 5;
+			}else{
+				min = i * 5;
+			}
+			val = i * 5;
+			minList.push({name : min, value : val});
+		}
+
+		initSelect("CloseHour", hourList, getHour(timeInfo.close_time));
+		initSelect("CloseMin", minList, getMinute(timeInfo.close_time));
+		initSelect("OpenHour", hourList, getHour(timeInfo.open_time));
+		initSelect("OpenMin", minList, getMinute(timeInfo.open_time));
+	}
+
+	function getHour(time){
+		var hour = parseInt(time/3600);
+		return hour;
+	}
+
+	function getMinute(time){
+		var minute = parseInt(time%3600);
+		minute = parseInt(minute/60);
+		return minute;
+	}
+
+	function setTimeData(hour, minute){
+		var time;
+		time = hour * 3600;
+		time += minute * 60;
+		return time;
+	}
+
+	$("#Save").click(function(){
+		saveTimeSleep();
+	});
+
+	function saveTimeSleep(){
+		var para = {};
+		var data = {};
+
+		para.time_sleep = {};
+		para.time_sleep.config = data;
+
+		data.enable = $("#Switch").attr("data-value");
+
+		if ("1" == data.enable){
+			var closeHour = $("#CloseHour").attr("data-value");
+			var closeMinute = $("#CloseMin").attr("data-value");
+			var openHour = $("#OpenHour").attr("data-value");
+			var openMinute = $("#OpenMin").attr("data-value");
+
+			data.close_time = setTimeData(closeHour, closeMinute);
+			data.open_time = setTimeData(openHour, openMinute);
+		}
+
+		showLoading(label.saving);
+		apiSet(para, function(ret){
+			var code = ret[ERR_CODE];
+			if (E_NONE == code){
+				$.setTimeout(function(){
+					closeLoading();
+				}, ret[K_MODULE].time_sleep.config.wait_time * 1000);
+			}else{
+				handleError(code);
+				closeLoading();
+			}
+		});
+	}
+})();
+</script>
+<div class="help hidden">
+	<ul class="help-content">
+		<li class="help-head">
+			<img class="app-icon" src="/luci-static/images/app-icon/time_sleep.png?_=20180420151033" />
+			<span class="help-title">{%label.timeSleep%}</span>
+		</li>
+		<div id="HelpTimeSleep">
+		</div>
+	</ul>
+</div>
+<div class="head-con">
+	<img class="app-icon" src="/luci-static/images/app-icon/time_sleep.png?_=20180420151033" />
+	<a href="javascript:history.go(-1);" class="head-btn-l">
+		<i class="head-btn icon icon_back"></i>
+		<span class="head-title">{%label.timeSleep%}</span>
+	</a>
+</div>
+<div class="set-con below-head">
+	<ul class="set-con">
+		<li class="text-con">
+			<label class="desc-lbl">{%label.timeSleep%}</label>
+			<span class="set-con-middle">
+				<span id="Switch" class="switch">
+					<i class="switch-circle"></i>
+				</span>
+			</span>
+		</li>
+	</ul>
+	<div id="Param" class="hidden">
+		<ul class="set-con">
+			<div class="set-select-two">
+				<label class="desc-lbl">{%label.closeTime%}</label>
+				<li class="text-con text-min">
+					<span id="CloseHour" class="select select-min">
+						<span class="value sel-value set-min"></span>
+						<i class="tip icon_list-expansion"></i>
+					</span>
+				</li>
+				<span class="time-to">{%label.colon%}</span>
+				<li class="text-con text-min">
+					<span id="CloseMin" class="select select-min">
+						<span class="value sel-value set-min"></span>
+						<i class="tip icon_list-expansion"></i>
+					</span>
+				</li>
+			</div>
+		</ul>
+		<ul class="set-con">
+			<div class="set-select-two">
+				<label class="desc-lbl">{%label.openTime%}</label>
+				<li class="text-con text-min">
+					<span id="OpenHour" class="select select-min">
+						<span class="value sel-value set-min"></span>
+						<i class="tip icon_list-expansion"></i>
+					</span>
+				</li>
+				<span class="time-to">{%label.colon%}</span>
+				<li class="text-con text-min">
+					<span id="OpenMin" class="select select-min">
+						<span class="value sel-value set-min"></span>
+						<i class="tip icon_list-expansion"></i>
+					</span>
+				</li>
+			</div>
+		</ul>
+	</div>
+	<div class="disable-note hidden">
+		<p class="disable-str">{%label.sharedWifiDisabledTip1%}</p>
+	</div>
+	<div class="err-note hidden">
+		<i class="err-icon icon_remind_line"></i>
+		<p class="note-str"></p>
+	</div>
+	<div class="btn-con">
+		<input id="Save" class="btn" type="button" value="{%btn.save%}" />
+	</div>
+</div>

@@ -1,0 +1,61 @@
+<script type="text/javascript">
+
+	function checkSsid(ssid){
+		if("" == ssid){
+			return eval("E_GUEST_SSID_BLANK");
+		}
+
+		if (checkStrLen(ssid, 32, 1) != E_NONE){
+			return eval("E_GUEST_SSID_LEN");
+		}
+
+		return E_NONE;
+	}
+
+	function checkPwd(password){
+		var err = checkStrFormat(password);
+		switch(err){
+		case E_STRINGBLANK:
+			return E_NONE;
+		case E_STRINGFORMAT:
+			return eval("E_GUEST_PWD_ILLEGAL");
+		}
+
+		if (checkStrLen(password, 63, 8) != E_NONE){
+			return eval("E_GUEST_PWD_LEN");
+		}
+
+		return E_NONE;
+	}
+
+	function checkSpeed(speed, limitType){
+		bEditing = false;
+		var err = checkNumNew(speed, 0, 10000);
+
+		if ("" == speed){
+			return E_NONE;
+		}
+
+		switch(err){
+		case E_NUMFORMAT:
+			return eval("E_GUEST_"+limitType+"_LIMIT_ILLEGAL");
+		case E_NUMRANGE:
+			return eval("E_GUEST_"+limitType+"_LIMIT_RANG");
+		}
+
+		return E_NONE;
+	}
+
+	function handleGuestError(errCode, callback, smart){
+		var newErrCode = errCode;
+		if(smart && parseInt(smart)){
+			switch(errCode){
+				case E_GUESET_SSID_WIFI2G_SAME:
+				case E_GUESET_SSID_WIFI5G_SAME:
+					newErrCode = E_GUESET_SSID_WIFI2G_SAME_SMART;
+					break;
+			}
+		}
+		return handleError(newErrCode, callback);
+	}
+</script>

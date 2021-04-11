@@ -1,0 +1,29 @@
+#!/bin/sh
+
+uci -q batch <<-EOF >/dev/null
+	delete ucitrack.@UPnP[-1]
+	add ucitrack UPnP
+	set ucitrack.@UPnP[-1].init=upnp
+EOF
+
+rm -f /tmp/luci-indexcache
+
+change_rule() {
+	local action
+	local cfg="$1"
+
+	config_get action $cfg action
+
+	if [ $action != "allow" ]; then
+		return 1
+	fi
+
+	uci set upnpd.$cfg.ext_ports=0-65535
+	uci set upnpd.$cfg.int_ports=0-65535
+}
+
+config_load upnpd
+config_foreach change_rule perm_rule
+uci commit upnpd
+
+exit 0

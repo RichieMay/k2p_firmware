@@ -1,0 +1,13 @@
+#!/bin/sh /etc/rc.common
+# Copyright (C) 2006-2011 OpenWrt.org
+
+DEFAULT=/etc/default/pppoe-server
+
+start() {
+	[ -f $DEFAULT ] && . $DEFAULT
+	/usr/sbin/pppoe-server $OPTIONS
+}
+
+stop() {
+	service_stop /usr/sbin/pppoe-server
+}

@@ -1,0 +1,9 @@
+/usr/lib/lua/luci/data/white_list.lua
+/usr/lib/lua/luci/view/pc/onlineList.htm
+/usr/lib/lua/luci/data/white_list_plt.lua
+/usr/lib/lua/luci/controller/admin/white_list_plt.lua
+/usr/lib/lua/luci/view/h5/onlineList.htm
+/www/luci-static/images/app-icon/white_list.png
+/usr/lib/lua/luci/view/pc/whiteList.htm
+/usr/lib/lua/luci/view/h5/whiteList.htm
+/usr/lib/lua/luci/controller/admin/white_list.lua

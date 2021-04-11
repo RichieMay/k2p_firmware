@@ -1,0 +1,40 @@
+#!/bin/sh
+
+if [ -e /etc/config/system ]
+then
+	upgrade=$(uci get system.upgrade)
+	if [ "$upgrade" != "upgrade" ]
+	then
+		uci set system.upgrade=upgrade
+	fi
+
+	mode=$(uci get system.upgrade.mode)
+	if [ ! $mode ]
+	then
+		uci set system.upgrade.mode=0
+	fi
+
+	start_hour=$(uci get system.upgrade.start_hour)
+	if [ ! $start_hour ]
+	then
+		uci set system.upgrade.start_hour=23
+	fi
+
+	start_minute=$(uci get system.upgrade.start_minute)
+	if [ ! $start_minute ]
+	then
+		uci set system.upgrade.start_minute=30
+	fi
+
+	uci commit system
+fi
+
+if [ -e /etc/config/onekeyupgrade ]
+then
+	config=$(uci get onekeyupgrade.config)
+	if [ "$config" != "config" ]
+	then
+		uci set onekeyupgrade.config=config
+	fi
+	uci commit onekeyupgrade
+fi

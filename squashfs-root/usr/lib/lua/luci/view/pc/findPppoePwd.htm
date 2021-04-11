@@ -1,0 +1,163 @@
+<style type="text/css">div.pppoe-message{width:400px;vertical-align:middle;margin:140px auto 47px}div.pic-null-bg{background:url(/luci-static/images/pic-null.png?_=20180420151033) no-repeat;background-size:172px 123px;background-position:center}h1.message-head{margin-bottom:46px;font-size:24px;color:#3f4044}ul.message-list{margin-top:35px}div.find-result{width:300px;margin:10px auto}p.result-str{font-size:14px;color:#f13f3f}p.find-success{color:#ff7800}input.btn{margin-top:9px}input.btn-right{margin-left:20px;background-color:#ff7800}li.current-step h2{background-color:#13b1d8}input.btn-left{margin-left:0}</style>
+<%+network-set-script%>
+<script type="text/javascript">
+(function(){
+	var param = window.sessionStorage;
+	var status = {};
+	for (var k in param){
+		var val = sessionLS.getItem(k);
+		status[k] = val;
+	}
+
+	var curStatus = status["find_success"];
+	if ("1" == curStatus){
+		findSuccess();
+	}else{
+		findFailed();
+	}
+
+	function findSuccess(){
+		var username = status["user"];
+		var	password = status["password"];
+
+		$("#PppoeUser").val(username);
+		$("#PppoePwd").val(password);
+		$(".pppoe-message").css('visibility','visible');
+		$(".find-pwd").removeClass("pic-null-bg");
+		$(".find-result").show();
+		$(".result-str").html("{%label.findSuccess%}").addClass("find-success");
+		$("#Save").val("{%btn.nextStep%}");
+	}
+
+	function findFailed(){
+		$(".pppoe-message").css('visibility','hidden');
+		$(".find-pwd").addClass("pic-null-bg");
+		$(".find-result").show();
+		$(".result-str").html("{%label.findFailed%}").removeClass("find-success");
+		$("#Save").val("{%btn.retryPwdFind%}");
+	}
+
+	$("#Back").click(function(){
+		stateman.go("guideNetworkSet");
+	});
+
+	function retryFindPwd(){
+		showLoading(label.findingPppoePwd);
+		$(".find-result").hide();
+		$(".err-note").hide();
+
+		var para = {
+			find_pwd:{config:null}
+		};
+
+		apiGet(para, function(result){
+			closeLoading();
+			var errNo = result[ERR_CODE];
+			if (E_NONE == errNo){
+				ret = result[K_MODULE];
+			}else{
+				console.log(result);
+				return;
+			}
+
+			var data = ret.find_pwd.config;
+
+			var setValue = {};
+			setValue.find_success = data.find_success;
+			setValue.user = data.user;
+			setValue.password = data.password;
+			for (var k in setValue){
+				sessionLS.setItem(k, setValue[k]);
+			}
+			stateman.go("findPppoePwd");
+		});
+	};
+
+	function showError(errTip){
+		$(".find-result").hide();
+		showNote(errTip);
+	}
+
+	function savePppoe(){
+		var wanConf = {};
+		var data = {};
+		var para = {};
+
+		para.network = {};
+		para.network.wan = wanConf;
+		wanConf.protocol = 'pppoe';
+		para.network.pppoe = data;
+		data.username = $("#PppoeUser").val();
+		data.password = $("#PppoePwd").val();
+		var checkType = "pppoe";
+
+		if (handleError(checkUserName(data.username, checkType), showError)){
+			return;
+		}
+
+		if (handleError(checkPassWord(data.password, checkType), showError)){
+			return;
+		}
+
+		showLoading(label.saving);
+		apiSetWithModule("network", para, function(ret){
+			var code = ret[ERR_CODE];
+			if (E_NONE == code){
+				var time = getMaxWaitTime(ret);
+				$.setTimeout(function(){
+					stateman.go("guideWifiSet");
+				}, time * 1000);
+			}else{
+				handleError(code, showError);
+				closeLoading();
+			}
+		});
+	}
+
+	$("#Save").click(function(){
+		if (1 == curStatus){
+			savePppoe();
+		}else{
+			retryFindPwd();
+		}
+	});
+
+	var scroll = new NiceScroll("GuideCon");
+	scroll.init();
+})();
+</script>
+<div class="head">
+	<div class="left-logo">
+		<img class="logo" src="/luci-static/images/phicomm.png?_=20180420151033" alt="phicomm" />
+		<span class="brand">{%label.phicomm%}</span>
+	</div>
+</div>
+<div id="GuideCon" class="guide find-pwd">
+	<div class="pppoe-message">
+		<h1 class="message-head">{%label.findPwd%}</h1>
+		<ul class="set-con message-list">
+			<li class="text-con">
+				<label class="desc-lbl">{%label.pppoeUser%}</label>
+				<input id="PppoeUser" class="text" maxLength="32" value="" />
+			</li>
+		</ul>
+		<ul class="set-con message-list">
+			<li class="text-con">
+				<label class="desc-lbl">{%label.pppoePasswd%}</label>
+				<input id="PppoePwd" class="text" maxLength="32" value="" />
+			</li>
+		</ul>
+	</div>
+	<div class="find-result">
+		<p class="result-str"></p>
+	</div>
+	<div class="err-note err-note-tip hidden">
+		<i class="err-icon icon_remind_line"></i>
+		<p class="note-str"></p>
+	</div>
+	<div class="fun-btn">
+		<input id="Back" class="btn guide-btn btn-left" type="button" value="{%btn.back%}" />
+		<input id="Save" class="btn guide-btn btn-right" type="button" value="{%btn.nextStep%}" />
+	</div>
+</div>
+<%+footer%>

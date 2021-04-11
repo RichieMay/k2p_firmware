@@ -1,0 +1,9 @@
+Package: tcpping
+Version: 0.2-59e94bd
+Depends: libc, libnet-1.2.x, libpcap
+Source: package/phicomm/tcpping
+Section: net
+Maintainer: Jim Wyllie <jwyllie83@gmail.com>
+Architecture: ramips_1004kc
+Installed-Size: 7346
+Description:  unknown

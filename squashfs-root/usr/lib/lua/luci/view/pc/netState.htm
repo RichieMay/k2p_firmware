@@ -1,0 +1,612 @@
+<style type="text/css">#Con{background-color:#FFF}#Content{width:100%;border:0 solid #DDD;background-color:#fafafa}div.net-state-width{min-width:690px}div.topology{position:relative;margin:152px auto 132px;width:690px}div.topology-bg{position:absolute;margin:auto;width:537px;height:258px;left:80px;top:-82px;background:url(/luci-static/images/map_bg.png?_=20180420151033) no-repeat;background-size:contain}div.topology-left{position:absolute;top:0;left:0;width:102px;height:74px;margin:auto;background:url(/luci-static/images/computer.svg?_=20180420151033) no-repeat;background-size:contain;cursor:pointer}div.topology-center{position:absolute;top:0;left:0;right:0;width:102px;height:74px;margin:auto;background:url(/luci-static/images/router.svg?_=20180420151033) no-repeat;background-size:contain;cursor:pointer}div.topology-right{position:absolute;top:0;right:0;width:102px;height:74px;margin:auto;background:url(/luci-static/images/net.svg?_=20180420151033) no-repeat;background-size:contain;cursor:pointer}li.device{width:96px;left:0;position:absolute}li.router{width:100%;left:0;right:0;margin:auto;position:absolute}li.internet{width:96px;right:0;position:absolute}hr.wifi{color:#a4a8b0;width:110px;top:32px;left:152px;position:absolute}hr.network{color:#a4a8b0;width:150px;top:32px;right:116px;position:absolute}hr.wisp{border-style:dashed}div.wisp-bg{background:url(/luci-static/images/router_wisp.svg?_=20180420151033) no-repeat}div.device-state{position:absolute;top:0;left:78px;width:24px;height:24px;border-radius:50%;background-color:#25d678;text-align:center}i.dev-num{color:#FFF;font-size:14px;line-height:24px;font-style:inherit}div.wifi-state{position:absolute;top:0;left:116px;cursor:pointer}i.wifi-icon{font-size:36px}i.smart-icon{font-size:36px}p.smart-status{margin-top:13px;position:absolute;color:#ff9000}p.wifi-state{width:160px;margin-top:13px;position:absolute}p.wifi-state span{position:absolute;margin-left:24px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;width:116px;font-size:12px;left:10px;display:inline-block}p.wifi-close{color:#9e9e9e}p.wifi-2g{color:#388fc6}p.wifi-5g{color:#43bf77}#Ssid2G{margin-top:-8px}#Ssid5G{margin-top:28px}div.internet-state{position:absolute;top:-38px;right:180px;width:110px}div.diagnose-state{cursor:pointer}i.net-state-icon{position:absolute;z-index:99;left:79px;top:53px;font-size:34px;color:#fe4606;background-color:#fafafa}ul.topology-desc{color:#767d82;font-size:14px;padding-top:95px;text-align:center}ul.topology-desc li{display:inline-block}span.model{margin-left:.25em}div.device-status{margin:auto;width:1000px;height:230px;color:rgba(63,64,68,0.8);font-size:12px;position:relative}div.internet-note{position:absolute;left:-26px;top:36px;width:246px;text-align:center}div.wisp-note{top:42px}p.route-note{font-size:12px;color:#f00;text-overflow:ellipsis;white-space:nowrap;overflow:hidden}p.wisp-note{color:#767d82}div.speed-states{width:300px;height:230px;border:1px solid #d6dce8;background-color:#FFF;position:absolute}div.cpu-states{width:300px;height:230px;border:1px solid #d6dce8;background-color:#FFF;margin:auto;position:relative}div.ram-states{width:300px;height:230px;border:1px solid #d6dce8;background-color:#FFF;right:0;top:0;position:absolute}#SpeedStatus{height:130px;margin-top:50px;margin-bottom:50px;z-index:200}hr.first{color:#d6dce8;opacity:.8;border-style:dashed;width:100%;top:63px;position:absolute}hr.second{color:#d6dce8;opacity:.8;border-style:dashed;width:100%;top:119px;position:absolute}div.right-boder{border-right:1px dashed #d6dce8;opacity:.8;width:60%;height:100%;position:absolute;top:0;z-index:0}#RamStatus{height:100%}#CpuStatus{height:100%}span.left-top{font-size:12px;top:8px;left:12px;position:absolute}span.left-isp{font-size:12px;top:32px;left:12px;position:absolute}span.left-bottom{font-size:12px;bottom:8px;left:12px;position:absolute}span.ram-bottom{bottom:24px}span.cpu-note{font-size:26px;margin-top:100px;color:#43bf77;position:absolute;width:100%;text-align:center}span.ram-note{font-size:26px;margin-top:100px;color:#388fc6;position:absolute;width:100%;text-align:center}div.right-bottom{height:18px;width:100%;bottom:6px;position:absolute}div.left-bottom{height:18px;width:60%;bottom:6px;position:absolute}div.color-note{width:10px;height:10px}div.down-note{margin:3px 10px;background-color:#ff9000}div.up-note{margin:3px 30px;position:absolute;top:0;left:70px;background-color:#71747e}div.ram-note{margin:3px 10px;background-color:#388fc6}span.down-tip{font-size:12px;position:absolute;top:0;left:26px}span.up-tip{font-size:12px;position:absolute;top:0;left:115px}div.speed-down{position:absolute;left:62%;bottom:60px;width:72px;height:18px;line-height:18px;text-align:center;color:#fff;border-radius:12px;background-color:#ff9000;z-index:1000}div.speed-up{position:absolute;left:62%;bottom:80px;width:72px;height:18px;line-height:18px;text-align:center;color:#fff;border-radius:12px;background-color:#71747e;z-index:1000}</style><script type="text/javascript">
+(function(){
+	<%
+		local para = {
+			device_manage = {device_num = {}},
+			device = {info = {}},
+			wireless = {smart_connect = {}, wifi_2g_config = {}, wifi_5g_config = {}},
+			network = {wan_status = {}},
+			wisp = {config = {}},
+			dev_feature = {smart_connect = {}}
+		}
+		local result = tpl_get_data(para, true)
+		local remote_ip = luci.http.getenv("REMOTE_ADDR")
+	-%>
+	var refreshInterval = 2000;
+	var info = <%=result%>;
+
+	var device = info[K_MODULE].device.info;
+	var wifi2G = info[K_MODULE].wireless.wifi_2g_config;
+	var wifi5G = info[K_MODULE].wireless.wifi_5g_config;
+	var wisp = info[K_MODULE].wisp.config;
+	var clients = info[K_MODULE].device_manage.device_num;
+	var smart_connect_cap = info[K_MODULE].dev_feature.smart_connect.support;
+
+	var curIp = "<%=remote_ip%>";
+	var product = device.model;
+	var smartEnable;
+	var ssid2G = wifi2G.ssid;
+	var wifiEnable2G = wifi2G.enable;
+	var ssid5G = wifi5G.ssid;
+	var wifiEnable5G = wifi5G.enable;
+	var wispStatus = wisp.enable;
+	var wispIpaddr = wisp.ip;
+	var currentState = stateman.current.name;
+	var allRam = (device.total_ram / 1048576).toFixed(0);
+	var useRam = (device.used_ram / 1048576).toFixed(0);
+	var cpuSpeed = device.cpu_freq;
+	var cpuRate = device.cpu_used;
+	var deviceIP = device.wan_ip;
+	var deviceRegion = device.region;
+	var deviceIsp = device.isp;
+	var otherRam = allRam - useRam;
+	var otherRate = 100 - cpuRate;
+
+	var speedStatus = document.getElementById("SpeedStatus");
+	var glDataUp = [0, 0, 0, 0, '-','-'];
+	var glDataUpFalse = ['-', '-', '-', 0, 0, 0];
+	var glDataUpSpeed = glDataUp.slice(0, 6);
+		glDataUpSpeed[3] =  {value:glDataUp[3], symbol:'circle',symbolSize:10};
+
+	var glDataDown = [0, 0, 0, 0, '-','-'];
+	var glDataDownFalse = ['-', '-', '-', 0, 0, 0];
+	var glDataDownSpeed = glDataDown.slice(0, 6);
+		glDataDownSpeed[3] =  {value:glDataDown[3], symbol:'circle',symbolSize:10};
+
+	var cpuStatus = document.getElementById("CpuStatus");
+	var ramStatus = document.getElementById("RamStatus");
+
+	var speedChart = echarts.init(speedStatus);
+	var cpuChart = echarts.init(cpuStatus);
+	var ramChart = echarts.init(ramStatus);
+	var speedLineHeight = document.getElementById("SpeedStatus").offsetHeight;
+	var speedNumHeight = document.getElementById("SpeedUp").offsetHeight;
+
+	InternetType();
+	function InternetType(){
+		if (wispStatus == "1"){
+			//开启无线扩展
+			$("div.topology-right").addClass("wisp-bg");
+			$("hr.network").addClass("wisp");
+			$("#InternetTip").text(label.mainRouter);
+			id("NetworkStatus").onclick = function(){
+				stateman.go("pc.wispApp");
+			};
+		}else{
+			//未开启无线扩展
+			$("div.topology-right").removeClass("wisp-bg");
+			$("hr.network").removeClass("wisp");
+			$("#InternetTip").text(label.internet);
+			id("NetworkStatus").onclick = function(){
+				stateman.go("pc.networksetApp");
+			};
+		}
+	}
+
+	function toGB2312(str){
+		return unescape(str.replace(/\\u/gi, '%u'));
+	}
+
+	function addData(data, elem){
+		for(var i = 0; i < data.length - 3; i++){
+			data[i] = data[i+1];
+		}
+		data[i] = elem;
+		return data;
+	}
+
+	$("#SpeedStatus").find("div").css({"z-index":"999"});
+
+	speedChart.setOption({
+		xAxis: [
+			{
+				type: 'category',
+				show: false,
+				boundaryGap: false,
+				axisLabel:{
+					interval:0
+				},
+				data: (function (){
+					var now = new Date();
+					var res = [];
+					var len = 6;
+					while (len--) {
+						res.unshift(now.toLocaleTimeString().replace(/^\D*/,''));
+						now = new Date(now - 3000);
+					}
+					return res;
+				})()
+			}
+		],
+		yAxis: [
+			{
+				type: 'value',
+				splitNumber:3,
+				show: false,
+				max: 'dataMax',
+				min: 'dataMin',
+				axisLabel:{
+					formatter:'{value} B/s'
+				}
+			}
+		],
+		grid:{
+			z:10,
+            x: 0,
+            y: 8,
+            x2: 0,
+            y2: 8
+        },
+		series: [
+			{
+				type: 'line',
+				smooth: true,
+				symbol: "none",
+				data: glDataUpSpeed,
+				itemStyle: {
+					normal: {
+						color: "#71747e",
+						lineStyle: {
+							width: 2,
+							color: '#71747e'
+						}
+					}
+				}
+			},
+			{
+				type:'line',
+				smooth: true,
+				symbol: "none",
+				data:glDataUpFalse,
+				itemStyle: {
+						normal: {
+							lineStyle: {
+								width: 2,
+								color: '#71747e',
+								type:'dotted'
+							}
+						}
+					}
+			},
+			{
+				type:'line',
+				smooth: true,
+				symbol: "none",
+				data:glDataDownSpeed,
+				itemStyle:{
+					normal:{
+						color: "#FF9000",
+						lineStyle:{
+							width:2,
+							color:'#FF9000'
+						}
+					}
+				}
+			},
+			{
+				type: 'line',
+				smooth: true,
+				symbol: "none",
+				data:glDataDownFalse,
+				itemStyle: {
+						normal: {
+							lineStyle: {
+								width: 2,
+								color: '#FF9000',
+								type:'dotted'
+							}
+						}
+					}
+			}
+		]
+	});
+
+	cpuChart.setOption({
+		color:['#43bf77','#E6E6E6'],
+		series: [
+			{
+				type:'pie',
+				radius: ['50%', '60%'],
+				hoverAnimation:false,
+				silent:true,
+				itemStyle: {
+					normal: {
+						label: {
+							show: false
+						},
+						labelLine: {
+							show: false
+						}
+					}
+				},
+				data:[
+					{value:cpuRate},
+					{value:otherRate}
+				]
+			}
+		]
+	});
+
+	ramChart.setOption({
+		color:['#388fc6','#E6E6E6'],
+		series: [
+			{
+				type:'pie',
+				radius: ['50%', '60%'],
+				hoverAnimation:false,
+				silent:true,
+				itemStyle: {
+					normal: {
+						label: {
+							show: false
+						},
+						labelLine: {
+							show: false
+						}
+					}
+				},
+				data:[
+					{value:useRam},
+					{value:otherRam}
+				]
+			}
+		]
+	});
+
+	window.addEventListener("resize", function () {
+		speedChart.resize();
+		cpuChart.resize();
+		ramChart.resize();
+	 });
+
+	function initWifiState(){
+		$("#Ssid2G").text(ssid2G).attr("title",ssid2G);
+		$("#Ssid5G").text(ssid5G).attr("title",ssid5G);
+		$("#RouterProduct").text(product);
+		$("#DeviceIp").text(deviceIP);
+		$("#DeviceIsp").text(toGB2312(deviceRegion) + toGB2312(deviceIsp));
+		$("#DeviceSpeed").text(cpuSpeed + "MHz");
+		$("#AllRam").text(allRam + "MB");
+		$("#UseRam").text(useRam + "MB");
+		$("#CpuRate").text(cpuRate + "%");
+		$("#RamRate").text(Math.round(useRam / allRam * 100) + "%");
+
+		if (0 == wifiEnable2G){
+			// 2.4G无线关闭
+			$("#WifiStatus2G").addClass("wifi-close").removeClass("wifi-2g");
+		}else{
+			// 2.4G无线开启
+			$("#WifiStatus2G").addClass("wifi-2g").removeClass("wifi-close");
+		}
+
+		if (0 == wifiEnable5G){
+			// 5G无线关闭
+			$("#WifiStatus5G").addClass("wifi-close").removeClass("wifi-5g");
+		}else{
+			// 5G无线开启
+			$("#WifiStatus5G").addClass("wifi-5g").removeClass("wifi-close");
+		}
+
+		if ("1" == smart_connect_cap) {
+			smartEnable = info[K_MODULE].wireless.smart_connect.enable;
+		}
+
+		if (1 == smartEnable && 1 == smartEnable){
+			// 双频合一开启
+			$("i.wifi-icon").hide();
+			$("i.smart-icon").show();
+		}else{
+			// 双频合一关闭
+			$("i.wifi-icon").show();
+			$("i.smart-icon").hide();
+		}
+	}
+
+	function lineHeight(dataUp, dataDown, data){
+		var maxHeightUp = Math.max.apply(null, dataUp);
+		var minHeightUp = Math.min.apply(null, dataUp);
+		var maxHeightDown = Math.max.apply(null, dataDown);
+		var minHeightDown = Math.min.apply(null, dataDown);
+		var maxHeight = Math.max(maxHeightUp,maxHeightDown);
+		var minHeight = Math.min(minHeightUp,minHeightDown);
+		var heightNum;
+		var firstNum = data[3] - minHeight;
+		var secondNum = maxHeight - minHeight + 0.1;
+		if (maxHeight == minHeight && maxHeight == data[3] && maxHeight != 0){
+			heightNum = speedLineHeight + speedLineHeight * 0.35;
+		}else if(maxHeight == minHeight && maxHeight == data[3] && maxHeight == 0){
+			heightNum = speedLineHeight * 0.46;
+		}else{
+			heightNum = (firstNum/secondNum) * (speedLineHeight * 0.88) + (speedLineHeight * 0.46);
+		}
+		return heightNum;
+	}
+
+	function refreshStatus(){
+		var data = {
+			device_manage:{device_num:null},
+			network:{"wan_status":null},
+			wisp:{"config":null},
+			device:{"info":null}
+		};
+
+		apiGet(data, function(result){
+			if (currentState != stateman.current.name){
+				return;
+			}
+
+			var errNo = result[ERR_CODE];
+
+			if (E_NONE == errNo){
+				ret = result[K_MODULE];
+			}else{
+				console.log(result);
+			}
+
+			var internetStatus = ret.network.wan_status;
+			var wlExtendStatus = ret.wisp.config;
+			var clients = ret.device_manage.device_num;
+			var deviceStatus = ret.device.info;
+			glDataUp = addData(glDataUp,internetStatus.upload_speed);
+			glDataDown = addData(glDataDown,internetStatus.download_speed);
+
+			allRam = (deviceStatus.total_ram / 1048576).toFixed(0);
+			useRam = (deviceStatus.used_ram / 1048576).toFixed(0);
+			cpuSpeed = deviceStatus.cpu_freq;
+			cpuRate = deviceStatus.cpu_used;
+			deviceIP = deviceStatus.wan_ip;
+			deviceRegion = deviceStatus.region;
+			deviceIsp = deviceStatus.isp;
+			otherRam = allRam - useRam;
+			otherRate = 100 - cpuRate;
+
+			$("#DeviceIp").text(deviceIP);
+			$("#DeviceIsp").text(toGB2312(deviceRegion) + toGB2312(deviceIsp));
+			$("#DeviceSpeed").text(cpuSpeed + "MHz");
+			$("#AllRam").text(allRam  + "MB");
+			$("#UseRam").text(useRam  + "MB");
+			$("#CpuRate").text(cpuRate + "%");
+			$("#RamRate").text(Math.round(useRam / allRam * 100) + "%");
+
+			var online24G = parseInt(clients.online_24G, 10);
+			var online5G = parseInt(clients.online_5G, 10);
+			var onlineLan = parseInt(clients.online_lan, 10);
+			var onlineGuest = parseInt(clients.online_guest, 10);
+			var deviceNum = online24G + online5G + onlineLan + onlineGuest;
+			$("#DevNum").text(deviceNum);
+
+			if (0 == internetStatus.internet_status){
+				// 不能上网
+				$("#WanState").show();
+				$("#WanState").addClass("icon_error").show();
+				$("#InternetNote").show().removeClass("wisp-note");
+				$("div.internet-note").removeClass("wisp-note");
+				$("#DiagnoseStatus").addClass("diagnose-state");
+
+				id("DiagnoseStatus").onclick = function(){
+					stateman.go("pc.diagnoseApp");
+				};
+
+				if (wispStatus == "1"){
+					//开启无线扩展
+					if ("1" == wlExtendStatus.connected){
+						$("#InternetNote").text(label.wispInternet).attr("title",label.wispInternet);
+					}else{
+						$("#InternetNote").text(label.wispFail).attr("title",label.wispFail);
+					}
+				}else{
+					//未开启无线扩展
+					if (1 == internetStatus.status_code){
+						$("#InternetNote").text(label.wanNoconnect).attr("title",label.wanNoconnect);
+					}else{
+						$("#InternetNote").text(label.internetInterrupt).attr("title",label.internetInterrupt);
+					}
+				}
+
+				var upNumHeight = speedLineHeight * 0.615;
+				var DownNumHeight = speedLineHeight * 0.46;
+				$("#SpeedUp").css({"bottom": upNumHeight + "px"});
+				$("#SpeedDown").css({"bottom": DownNumHeight + "px"});
+				$("#Upspeed").text("0B/s");
+				$("#Downspeed").text("0B/s");
+				speedChart.setOption({
+					xAxis:{
+						data: (function (){
+							var now = new Date();
+							var res = [];
+							var len = 6;
+							while (len--) {
+								res.unshift(now.toLocaleTimeString().replace(/^\D*/,''));
+								now = new Date(now - 3000);
+							}
+							return res;
+						})()
+					},
+					series:[{
+						data:[0, 0, 0, {value:0, symbol:'circle',symbolSize:10}, '-', '-']
+					},
+					{
+						data:['-', '-', '-', 0, 0, 0]
+					},
+					{
+						data:[0, 0, 0, {value:0, symbol:'circle',symbolSize:10}, '-', '-']
+					},
+					{
+						data:['-', '-', '-', 0, 0, 0]
+					}
+					]
+				});
+			}else{
+				// 可以上网
+				$("#DiagnoseStatus").removeClass("diagnose-state");
+				if (wispStatus == "1"){
+					//开启无线扩展
+					$("#WanState").hide();
+					$("div.internet-note").addClass("wisp-note");
+					$("#InternetNote").show().addClass("wisp-note").text(label.wispSuccess).attr("title",label.wispSuccess);
+				}else{
+					//未开启无线扩展
+					$("#WanState").hide();
+					$("#InternetNote").hide();
+				}
+
+				glDataUp[4] = '-';
+				glDataUp[5] = '-';
+				glDataDown[4] = '-';
+				glDataDown[5] = '-';
+				glDataUpSpeed = glDataUp.slice(0, 6);
+				glDataUpSpeed[3] =  {value:glDataUp[3], symbol:'circle',symbolSize:10};
+				glDataUpFalse = ['-', '-', '-', glDataUp[3], glDataUp[3], glDataUp[3]];
+
+				glDataDownSpeed = glDataDown.slice(0, 6);
+				glDataDownSpeed[3] =  {value:glDataDown[3], symbol:'circle',symbolSize:10};
+				glDataDownFalse = ['-', '-', '-', glDataDown[3], glDataDown[3], glDataDown[3]];
+
+				var upHeight = lineHeight(glDataUp.slice(0, 4), glDataDown.slice(0, 4), glDataUp.slice(0, 4));
+				var downHeight = lineHeight(glDataUp.slice(0, 4), glDataDown.slice(0, 4), glDataDown.slice(0, 4));
+				if (upHeight == downHeight){
+					upHeight = upHeight + speedNumHeight + 2;
+				}else if (upHeight > downHeight && upHeight - downHeight < speedNumHeight){
+					upHeight = downHeight + speedNumHeight + 2;
+				}else if (upHeight < downHeight && downHeight - upHeight < speedNumHeight){
+					downHeight = upHeight + speedNumHeight + 2;
+				}
+
+				$("#SpeedUp").css({"bottom": upHeight + "px"});
+				$("#SpeedDown").css({"bottom": downHeight + "px"});
+				$("#Upspeed").text(netSpeedTrans(internetStatus.upload_speed));
+				$("#Downspeed").text(netSpeedTrans(internetStatus.download_speed));
+				speedChart.setOption({
+					xAxis:{
+						data: (function (){
+							var now = new Date();
+							var res = [];
+							var len = 6;
+							while (len--) {
+								res.unshift(now.toLocaleTimeString().replace(/^\D*/,''));
+								now = new Date(now - 3000);
+							}
+							return res;
+						})()
+					},
+					series:[{
+						data:glDataUpSpeed
+					},
+					{
+						data:glDataUpFalse
+					},
+					{
+						data:glDataDownSpeed
+					},
+					{
+						data:glDataDownFalse
+					}
+					]
+				});
+			}
+
+			cpuChart.setOption({
+				series:[
+					{data:[
+						{value:cpuRate},
+						{value:otherRate}
+					]}
+				]
+			});
+
+			ramChart.setOption({
+				series:[
+					{data:[
+							{value:useRam},
+							{value:otherRam}
+					]}
+				]
+			});
+
+			$.setTimeout(refreshStatus, refreshInterval);
+		});
+	}
+
+	id("DeviceStatus").onclick = function(){
+		stateman.go("pc.deviceManage");
+	};
+
+	id("RouteStatus").onclick = function(){
+		stateman.go("pc.routerInfoApp");
+	};
+
+	id("WifiStatus").onclick = function(){
+		stateman.go("pc.wifiSet");
+	};
+
+	initWifiState();
+	$.setTimeout(refreshStatus, refreshInterval);
+})();
+</script>
+
+<div class="topology net-state-width">
+	<div class="topology-bg"></div>
+	<div id="DeviceStatus" class="topology-left"></div>
+	<div id="RouteStatus" class="topology-center"></div>
+	<div id="NetworkStatus" class="topology-right"></div>
+	<div class="device-state">
+		<i id="DevNum" class="dev-num"></i>
+	</div>
+	<div id="WifiStatus" class="wifi-state">
+		<p class="smart-status"><i class="smart-icon icon_wifi_whole"></i></p>
+		<p class="wifi-state wifi-2g" id="WifiStatus2G">
+			<i class="wifi-icon icon_wifi_up"></i>
+			<span id="Ssid2G"></span>
+		</p>
+		<p class="wifi-state wifi-5g" id="WifiStatus5G">
+			<i class="wifi-icon icon_wifi_down"></i>
+			<span id="Ssid5G"></span>
+		</p>
+	</div>
+	<div id="DiagnoseStatus" class="internet-state">
+		<div class="internet-note"><p id="InternetNote" class="route-note"></p></div>
+		<i id="WanState" class="net-state-icon icon_error hidden"></i>
+	</div>
+	<hr size=1 class="wifi">
+	<hr size=1 class="network">
+	<ul class="topology-desc">
+		<li class="device">{%label.device%}</li>
+		<li class="router">{%label.phicommRouter%}<span id="RouterProduct" class="model"></span></li>
+		<li id="InternetTip" class="internet">{%label.internet%}</li>
+	</ul>
+</div>
+<div class="device-status">
+	<div class="speed-states">
+		<span class="left-top">{%label.deviceIp%}<span id="DeviceIp"></span></span>
+		<span id="DeviceIsp" class="left-isp"></span>
+		<div id="SpeedUp" class="speed-up"><span id="Upspeed">0B/s</span></div>
+		<div id="SpeedDown" class="speed-down"><span id="Downspeed">0B/s</span></div>
+		<hr size=1 class="first">
+		<hr size=1 class="second">
+		<div id="SpeedStatus"></div>
+		<div class="right-boder"></div>
+		<div class="right-bottom">
+			<div class="down-note color-note"></div>
+			<span class="down-tip">{%label.downSpeed%}</span>
+			<div class="up-note color-note"></div>
+			<span class="up-tip">{%label.upSpeed%}</span>
+		</div>
+	</div>
+	<div class="cpu-states">
+		<span class="left-top">{%label.cpuRate%}</span>
+		<span class="left-bottom">{%label.cpuSpeed%}<span id="DeviceSpeed"></span></span>
+		<span class="cpu-note"><span id="CpuRate"></span></span>
+		<div id="CpuStatus"></div>
+	</div>
+	<div class="ram-states">
+		<span class="left-top">{%label.ramRate%}</span>
+		<span class="left-bottom ram-bottom">{%label.allRam%}<span id="AllRam"></span></span>
+		<div class="left-bottom">
+			<div class="ram-note color-note"></div>
+			<span class="down-tip">{%label.useRam%}<span id="UseRam"></span></span>
+		</div>
+		<span class="ram-note"><span id="RamRate"></span></span>
+		<div id="RamStatus"></div>
+	</div>
+</div>
+

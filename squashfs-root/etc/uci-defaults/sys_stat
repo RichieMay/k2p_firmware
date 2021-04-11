@@ -1,0 +1,23 @@
+#!/bin/sh
+
+
+cpu=`cat /proc/cpuinfo | head -1|awk -F ':[ ]+' '{print $2}'`
+if [ "$cpu" = "MT7621" ]; then
+	speed="880"
+	ram="134217728"
+elif [ "$cpu" = "MT7620" ]; then
+	speed="580"
+	ram="67108864"
+elif [ "$cpu" = "MT7628" ]; then
+	speed="580"
+	ram="33554432"
+fi
+
+if [ -e /etc/config/system ]; then
+	uci set system.system.cpu_speed=$speed
+	uci set system.system.all_ram=$ram
+	uci commit system
+fi
+
+exit 0
+

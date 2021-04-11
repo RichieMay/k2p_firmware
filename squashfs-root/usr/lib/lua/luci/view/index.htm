@@ -1,0 +1,120 @@
+<%-
+	local json = require("luci.json")
+	local para = {
+		device = {info = {}},
+		welcome = {config = {}},
+		network = {lan = {}},
+		dev_feature = {time_zone = {}, system_info = {}, time = {}, guide = {}, mode_switch = {}}
+	}
+	local result = tpl_get_data(para)
+
+	local info = result[K_MODULE].device.info
+	local model = info.model
+	local domain = info.domain
+
+	local welcome = result[K_MODULE].welcome.config
+	local guide = welcome.guide
+	local lang = welcome.language
+	local agreement = welcome.agreement
+	local factory = welcome.factory
+
+	local ip = require("luci.http").getenv("REMOTE_ADDR") or "0.0.0.0"
+	local mac = require("luci.sys").net.ip4mac(ip) or "00:00:00:00:00:00"
+
+	local lan = result[K_MODULE].network.lan
+	local lan_ip = lan.ip
+	local lan_mask = lan.netmask
+	local lan_net = require("luci.phicomm.validator").check_same_network(ip, lan_ip, lan_mask)
+	local lan_login = lan_net and "true" or "false"
+
+	local time = result[K_MODULE].dev_feature.time
+
+	local system_info = result[K_MODULE].dev_feature.system_info
+	local language_list = ""
+	if "table" ~= type(system_info) or nil == system_info.language then
+		system_info.language = {}
+	end
+	language_list = json.encode(system_info.language)
+
+	local time_zone = result[K_MODULE].dev_feature.time_zone
+	local area_list = ""
+	if "table" ~= type(time_zone) or nil == time_zone.area then
+		time_zone.area = {}
+	end
+	area_list = json.encode(time_zone.area)
+
+	local mode_switch_cap = result[K_MODULE].dev_feature.mode_switch.support
+	local mode_config = "router"
+	if "1" == mode_switch_cap then
+		local data = {}
+		local mode_switch = {}
+		mode_switch["config"] = {}
+		data["mode_switch"] = mode_switch
+		local mode_info = tpl_get_data(data)
+		mode_config = mode_info[K_MODULE].mode_switch.config.mode
+	end
+	local tmp_guide_list = result[K_MODULE].dev_feature.guide.installed
+	if "ap" == mode_config then
+		tmp_guide_list = {"setLgPwd"}
+	end
+	local guide_list = json.encode(tmp_guide_list)
+-%>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+	<meta content="text/html; charset=UTF-8" http-equiv="Content-Type">
+	<title><%=model%></title>
+	<meta name="renderer" content="webkit">
+	<meta name="viewport" content="width=device-width,minimum-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
+	<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+	<meta name="screen-orientation" content="portrait"><!-- uc强制竖屏 -->
+	<meta name="x5-orientation" content="portrait"><!-- QQ强制竖屏 -->
+	<meta name="format-detection" content="telephone=no">
+	<link rel="icon" href="/luci-static/images/favicon.ico?_=20180420151033" type="image/x-icon" />
+	<link rel="shortcut icon" href="/luci-static/images/favicon.ico?_=20180420151033" type="image/x-icon" />
+	<link rel="stylesheet" type="text/css" href="/luci-static/dynaform/frame.css?_=20180420151033" />
+	<link rel="stylesheet" type="text/css" href="/luci-static/dynaform/icon_fonts_style.css?_=20180420151033" />
+	<script type="text/javascript" src="/luci-static/dynaform/frame.js?_=20180420151033"></script>
+</head>
+<body>
+	<div id="Con"></div>
+	<div id="Help">
+		<div class="help-back"><i class="help-back icon_help_back"></i></div>
+		<div id="HelpInfo" class="help-info"></div>
+	</div>
+	<div id="Cover" class="pop-cover"></div>
+	<div id="Pop" class="pop-widget"></div>
+	<script type="text/javascript">
+		var BROWSER = {
+			ip:"<%=ip%>",
+			mac:"<%=mac%>",
+			lan:<%=lan_login%>
+		};
+
+		var ROUTER = {
+			domain:"<%=domain%>",
+			time:{
+				reboot:<%=time.reboot%> * 1000,
+				reset:<%=time.reset%> * 1000,
+				restore:<%=time.restore%> * 1000,
+				manualUpgrade:<%=time.manual_upgrade%> * 1000,
+				onlineUpgrade:<%=time.online_upgrade%> * 1000,
+				detectDelay:<%=time.detect_delay%> * 1000
+			},
+			lang:'<%=lang%>',
+			agreement:'<%=agreement%>',
+			factory:'<%=factory%>',
+			guide:<%=guide%>,
+			languageList: <%=language_list%>,
+			areaList:<%=area_list%>,
+			swURL:'<%=system_info.sw_URL%>',
+			appURL:'<%=system_info.app_URL%>',
+			footerType:'<%=system_info.footer_type%>',
+			guideList:<%=guide_list%>,
+			modeSwitch:'<%=mode_config%>'
+		};
+
+		pageOnload();
+	</script>
+</body>
+</html>

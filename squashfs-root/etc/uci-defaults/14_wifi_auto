@@ -1,0 +1,52 @@
+#!/bin/sh
+
+if [ -e /etc/config/wireless ]
+then
+
+	aregion=$(cfg_phic -g wifi device 5G aregion)
+
+	if [ "0" == ${aregion} ]
+	then
+		cfg_phic -s device 5G aregion 10
+		uci commit wireless
+	fi
+
+	ht_extcha_2=$(cfg_phic -g wifi device 2.4G ht_extcha)
+	ht_extcha_5=$(cfg_phic -g wifi device 5G ht_extcha)
+	if [ "$ht_extcha_2" != "0" ]
+	then
+		cfg_phic -s device 2.4G ht_extcha 0
+	fi
+
+	if [ "$ht_extcha_5" != "0" ]
+	then
+		cfg_phic -s device 5G ht_extcha 0
+	fi
+
+	wisp5genable=$(cfg_phic -g wifi ifname 5G ApCliEnable)
+
+	if [ X"" == X${wisp5genable} ]
+	then
+		cfg_phic -s ifname 5G ApCliEnable 0
+		uci commit wireless
+	fi
+	cfg_sharewifi="/etc/init.d/sharedwifi"
+	if [ -f $cfg_sharewifi ]; then
+		sharewifi=$(uci show wireless |grep rax2)
+		if [ -z $sharewifi ]; then
+			ssid3=@PHICOMM共享WiFi_`eth_mac r wan | cut -c 16-`
+			uci -q batch <<-EOF >/dev/null
+			add wireless wifi-iface
+			set wireless.@wifi-iface[-1].device=mt7615e2
+			set wireless.@wifi-iface[-1].ifname=rax2
+			set wireless.@wifi-iface[-1].network=lan
+			set wireless.@wifi-iface[-1].mode=ap
+			set wireless.@wifi-iface[-1].ssid=$ssid3
+			set wireless.@wifi-iface[-1].encryption=none
+			set wireless.@wifi-iface[-1].disabled=1
+			EOF
+		fi
+	fi
+fi
+
+exit 0

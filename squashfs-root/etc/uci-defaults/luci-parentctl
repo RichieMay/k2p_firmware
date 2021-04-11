@@ -1,0 +1,22 @@
+#!/bin/sh
+. /lib/functions.sh
+
+uci -q batch <<-EOF >/dev/null
+	delete ucitrack.@parentctl[-1]
+	add ucitrack parentctl
+	set ucitrack.@parentctl[-1].init=parentctl
+EOF
+
+rm -f /tmp/luci-indexcache
+
+# del_rule() {
+# 	local cfg="$1"
+
+# 	uci delete parentctl.$cfg
+# }
+
+# config_load parentctl
+# config_foreach del_rule rule
+# uci commit parentctl
+
+exit 0

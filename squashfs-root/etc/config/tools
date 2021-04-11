@@ -1,0 +1,5 @@
+
+config tools 'config'
+	option ssh_enable '1'
+	option telnet_enable '0'
+

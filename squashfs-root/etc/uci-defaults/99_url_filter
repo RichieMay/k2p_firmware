@@ -1,0 +1,10 @@
+#!/bin/sh
+
+uci -q batch <<-EOF >/dev/null
+	delete ucitrack.@url_filter[-1]
+	add ucitrack url_filter
+	set ucitrack.@url_filter[-1].init=url_filter
+EOF
+
+rm -f /tmp/luci-indexcache
+exit 0

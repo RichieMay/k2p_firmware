@@ -1,0 +1,101 @@
+<style type="text/css">div.app-list{position:absolute;top:1.467rem;bottom:0;font-size:0;left:0;width:100%}ul.app-list{font-size:0;width:100%;height:25%;text-align:center}li.app-item{float:left;color:#ac0;border-color:#EEE;border-style:solid;border-width:0 1px 1px 0;box-sizing:border-box;width:25%;height:100%;display:inline-block;text-align:center;vertical-align:middle;background-color:#FFF}li.app-item .app-icon{width:1.067rem;height:1.067rem;border-radius:50%;margin:.5rem auto .333rem}li.app-item p{color:#2a2a2a;font-size:.277rem;margin-bottom:.5rem}ul.top-bg{height:.267rem;background-color:#f1f1f1;margin-top:1.2rem;width:100%;z-index:100}#Content{top:0;bottom:2rem;background-color:#FFF}</style>
+<script type="text/javascript">
+(function(){
+	<%
+		local para = {
+			dev_feature = {app_h5 = {}}
+		}
+
+		local data = tpl_get_data(para, true)
+	-%>
+
+	var data = <%=data%>;
+	var appInfo = data[K_MODULE].dev_feature.app_h5;
+
+	var appListAll = [{href:"#/networkset", icon:"internet", name:label.networkset, value:"network-set"},
+				   {href:"#/guest", icon:"guest", name:label.guestNet, value:"guest-wifi"},
+				   {href:"#/parentCtrl", icon:"parent_ctrl", name:label.parentCtrl, value:"parent-ctrl"},
+				   {href:"#/diagnose", icon:"diagnose", name:label.diagnose, value:"diagnose"},
+				   {href:"#/diagnose", icon:"diagnose", name:label.diagnose, value:"onekey-diagnose"},
+				   {href:"#/remoteMng", icon:"remote", name:label.remoteMng, value:"remote-manage"},
+				   {href:"#/screenSet", icon:"screen", name:label.screenSet, value:"screen-set"},
+				   {href:"#/timeZone", icon:"timezone", name:label.regionTimeZone, value:"time-zone"},
+				   {href:"#/wisp", icon:"wisp", name:label.wisp, value:"wisp"},
+				   {href:"#/modifyPwd", icon:"lock", name:label.adminPwd, value:"admin-pwd"},
+				   {href:"#/lanSet", icon:"lan", name:label.lanSet, value:"lan-set"},
+				   {href:"#/sysUpgrade", icon:"upgrade", name:label.autoUpgrade, value:"system-upgrade"},
+				   {href:"#/light", icon:"led", name:label.ledSet, value:"light"},
+				   {href:"#/signalCondition", icon:"signal_condition", name:label.signalCondition, value:"signal-condition"},
+				   {href:"#/timeSleep", icon:"time_sleep", name:label.timeSleep, value:"time-sleep"},
+				   {href:"#/whiteList", icon:"white_list", name:label.whiteList, value:"white-list"},
+				   {href:"/luci-static/online-help/Default.htm", icon:"online_help", name:label.onlineHelp, id:"OnlineHelp", value:"online-help"},
+				   {href:"#/timeReboot", icon:"reboot", name:label.timeRebootSet, value:"time-reboot"},
+				   {href:"javascript:void(0);", icon:"restore", name:label.reset, id:"FactoryReset", value:"factory-reset"}];
+
+	var appList = productSelect(appListAll, appInfo.installed);
+
+	function initAppList(appList){
+		var initApp = function(app){
+			var id = "";
+			if (app.id){
+				id = 'id="' + app.id + '"';
+			}
+
+			var targetStr = (app.value == "online-help")?' target="_blank" ':''
+
+			var icon = "/luci-static/images/app-icon/" + app.icon + ".png?_=20180420151033";
+			var href = "";
+			if (app.id){
+				href = app.href;
+			} else {
+				href = app.href + '/?keyBack=1';
+			}
+			var appHtml = '<a href="' + href + '" ' + id + targetStr + '>' +
+							'<li class="app-item">' +
+							'<img class="app-icon" src="' + icon + '" />' +
+							'<p>' + app.name + '</p>' +
+							'</li></a>';
+			return $(appHtml);
+		}
+
+		var colNum = 4;
+		var len = appList.length;
+		var rowNum = Math.ceil(len / colNum);
+		var idx = 0;
+		var appCon = $("#AppList");
+
+		for (var i = 0, idx = 0; i < rowNum; i++){
+			var ul = $('<ul class="app-list"></ul>').appendTo(appCon);
+			for (var j = 0; j < colNum && idx < len; j++, idx++){
+				initApp(appList[idx]).appendTo(ul);
+			}
+		}
+	}
+
+	initAppList(appList);
+
+	$("#FactoryReset").click(function(){
+		showConfirm(label.routerReset, function(choose){
+			if (choose){
+				showLoading(label.rebooting);
+				$.sendAjax('/system/reset', null, function(ret){
+					$.setTimeout(function(){
+						window.location.href = "http://" + "p.to";
+					}, ROUTER.time.reset);
+
+					$.setTimeout(function(){
+						// 检测LAN是否可以连接DUT
+						lanDetecting(function(){
+							window.location.href = "http://" + "p.to";
+						});
+					}, ROUTER.time.detectDelay);
+				});
+			}
+		});
+	});
+
+	$("#PageTitle").text(label.appSet);
+})();
+</script>
+<ul class="top-bg"></ul>
+<div id="AppList" class="app-list"></div>

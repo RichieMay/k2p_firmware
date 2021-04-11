@@ -1,0 +1,179 @@
+<style type="text/css">div.welcome{margin:0 auto;text-align:center;margin-top:18%}i.router{display:inline-block;background:url(/luci-static/images/phiwifi.png?_=20180420151033) no-repeat;background-size:contain;width:4.72rem;height:4.27rem;margin-left:1.2rem}div.btn-con-2{margin:5% auto 0}div.entry-links{font-size:0;margin:0 auto 3%;text-align:center}div.entry-links a{font-size:.347rem;color:#ff9919;text-decoration:underline}p.company{margin-bottom:.25rem;text-align:center;font-size:.32rem;color:#626262}div.pwd-con{font-size:0;border-bottom:1px solid #e9e9e9;width:6.667rem;margin:6% auto .2rem;height:1.167rem}li.text-con{width:5.2rem}i.tip{right:0}li.text-con input.text{width:4.2rem;border-width:0;vertical-align:middle;padding-right:1rem;padding-left:.2rem}i.err-icon{margin-left:1.6rem!important}p.note-str{width:65%!important}div.remember-con{font-size:0;text-align:center;line-height:1.907rem;height:1.907rem}div.remember-con span{color:#3d3f42;opacity:.8;font-size:.387rem;vertical-align:bottom}i.icon_lock{font-size:.9rem;color:#b2b2b2;border-right:1px solid #fe8f19;padding:0 .25rem;vertical-align:middle}i.check-icon{color:#b2b2b2;margin-left:0;vertical-align:middle}i.checked{color:#0fd245}div.err-note{margin-top:0}</style>
+<script type="text/javascript">
+(function(){
+	var checked = "checked";
+	var PWD_KEY = "loginPwd";
+
+	(function(){	// 尝试从本地读取密码
+		var pwd = null;
+		var check = $("#Check");
+
+		try{
+			pwd = localStorage.getItem(PWD_KEY);
+		}catch(e){};
+
+		if (pwd != null && pwd.length > 0){
+			check.addClass(checked);
+			$("#Pwd").val(pwd);
+		}else{
+			check.removeClass(checked);
+		}
+
+		check.click(function(){
+			if ($(this).hasClass(checked)){
+				$(this).removeClass(checked);
+			}else{
+				$(this).addClass(checked);
+			}
+		});
+	})();
+
+	if (OS.app){
+		$(".entry-links").addClass("invisible");
+	}
+
+	$("#WebPage").click(function(){
+		setPageStyle("pc");
+		window.location.reload();
+	});
+
+	$("#AppURL").attr("href",ROUTER.appURL);
+
+	function checkPwd(password){
+		if ("" == password){
+			return E_LOGIN_PWD_BLANK;
+		}
+
+		return E_NONE;
+	}
+
+	function refreshLogin(guide){
+		if ($("#Check").hasClass(checked)){
+			try{
+				localStorage.setItem(PWD_KEY, $("#Pwd").val());
+			}catch(e){};
+		}
+
+		if (1 == guide){
+			stateman.emit("reset");
+			window.location.hash = "#/" + ROUTER.guideList[1];
+		}else{
+			if ("" == stateman.previous.name || stateman.current.name == stateman.previous.name || "login" == stateman.previous.name){
+				stateman.go("phone.netState", {replace : true});
+			}else{
+				stateman.go(stateman.previous.name, {replace : true});
+			}
+		}
+	}
+
+	$("#Save").click(function(){
+		if (false == $("#Check").hasClass(checked)){
+			try{
+				localStorage.removeItem(PWD_KEY);
+			}catch(e){};
+		}
+
+		var pwd = $("#Pwd").val();
+
+		if (handleError(checkPwd(pwd))){
+			return;
+		}
+
+		var pwdEncoded = new Base64().base64encode(pwd);
+		var data = {};
+
+		data.username = "admin";
+		data.password = pwdEncoded;
+
+		apiLogin(data, function(ret){
+			var code = ret[ERR_CODE];
+			if (code == 0){
+				var goGuide = ret[K_MODULE].security.login.guide;
+				handleError(code, showNote)?closeLoading():refreshLogin(goGuide);
+			}else{
+				handleError(code);
+			}
+		});
+	});
+
+	if (ROUTER.languageList.length > 1){
+		$("#LangList").show();
+	}else{
+		$("#LangList").hide();
+	}
+
+	var curLang = ROUTER.lang;
+	var langListUsed = LANGLIST.getLangList();
+
+	initTool("LangList", langListUsed, curLang, function(val, init){
+		for (var i = 0; i < langListUsed.length; i++){
+			if (langListUsed[i]["value"] == val){
+				$("#Language").text(langListUsed[i]["name"]);
+				break;
+			}
+		}
+
+		if (!init){
+			var data = {};
+			data.lang = val;
+
+			apiSetWithUrl("/welcome/config", data, function(ret){
+				var code = ret[ERR_CODE];
+				if (E_NONE == code){
+					window.location.reload();
+				}else{
+					$.setTimeout(function(){
+						errHandle(code);
+					}, 800);
+				}
+			});
+		}
+	});
+
+	function errHandle(code){
+		switch(code){
+		case E_NONE:
+			return false;
+		default:
+			showNote(errStr.unknownErr + code);
+			break;
+		}
+
+		return true;
+	}
+})();
+</script>
+<div class="head-con">
+	<h1 class="head-title">{%label.phicommRouter%}</h1>
+	<div class="switch-lang">
+		<span id="LangList" class="select" data-value="0">
+			<span class="select-value">English</span>
+		</span>
+	</div>
+</div>
+<div class="set-con below-head">
+	<div class="set-con">
+		<div class="welcome">
+			<i class="router"></i>
+		</div>
+		<div class="pwd-con">
+			<i class="icon icon_lock"></i>
+			<li class="text-con">
+				<input class="text hover" maxLength="63" id="Pwd" placeholder="{%label.inputPwd%}" /><i class="tip icon-eye" data-value="0"></i>
+			</li>
+		</div>
+		<div class="err-note hidden">
+			<i class="err-icon icon_remind_line"></i>
+			<p class="note-str"></p>
+		</div>
+		<div class="btn-con btn-con-2">
+			<input id="Save" class="btn" type="button" value="{%btn.login%}" />
+		</div>
+		<div class="remember-con">
+			<i id="Check" class="tip-l check-icon icon_select_on"></i><span>{%label.rememberPwd%}</span>
+		</div>
+		<div class="entry-links"><a href="javascript:void(0);" id="WebPage">{%label.goWebPage%}</a></div>
+		<div class="entry-links"><a href="" id="AppURL" target="_blank">{%label.downloadApp%}</a></div>
+		<p class="company">{%label.phicommTechnologyCoLtd%}</p>
+	</div>
+</div>

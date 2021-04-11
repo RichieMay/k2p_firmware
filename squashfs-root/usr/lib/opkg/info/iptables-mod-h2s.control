@@ -1,0 +1,8 @@
+Package: iptables-mod-h2s
+Version: 1.4.21-1
+Depends: libc, iptables, kmod-ipt-h2s
+Source: package/network/utils/iptables
+Section: net
+Architecture: ramips_1004kc
+Installed-Size: 1157
+Description:  unknown

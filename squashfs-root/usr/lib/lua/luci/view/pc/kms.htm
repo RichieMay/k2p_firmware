@@ -1,0 +1,133 @@
+<script type="text/javascript">
+	(function () {
+		<%
+		local para = {
+			kms = {config = {}}
+		}
+
+		local data = tpl_get_data(para, true)
+		info=nixio.fs.readfile("/tmp/vlmcsd.log") or ""
+		local Run_flag=0
+		icount=tonumber(luci.sys.exec("ps -w | grep vlmcsd |grep -v grep| wc -l"))
+		
+		if tonumber(icount)>0 then
+			Run_flag=1
+		end 
+		
+		if Run_flag==0 then
+			Run_str="未运行"
+		else
+			Run_str="运行中"
+		end
+		-%>
+		var kmsInfo = <%=data%>;
+
+		function init(result) {
+			var errNo = result[ERR_CODE];
+			var ret;
+
+			if (E_NONE == errNo) {
+				ret = result[K_MODULE];
+			} else {
+				showAlert(result);
+				return;
+			}
+
+			var kms = ret.kms.config;
+
+			initSwitch("AutoSwitch", kms.autokms, function (state) {});
+			initSwitch("EnableSwitch", kms.enable, function (state) {
+				if (1 == state) {
+					//$("#Param").show();
+				} else {
+					//$("#Param").hide();
+				}
+			});
+		}
+
+		init(kmsInfo);
+
+		$("#Save").click(function () {
+			var data = {};
+			var para = {};
+
+			para.kms = {};
+			para.kms.config = data;
+			data.enable = $("#EnableSwitch").attr("data-value");
+			data.autokms = $("#AutoSwitch").attr("data-value");
+
+			showLoading(label.saving);
+			apiSet(para, function (ret) {
+				var code = ret[ERR_CODE];
+				handleError(code, showNote) ? closeLoading() : closeLoading(3);
+				location.reload();
+			});
+		});
+	})();
+</script>
+<div class="help hidden">
+	<ul class="help-content">
+		<li class="help-head">
+			<img class="app-icon" src="/luci-static/images/app-icon/kms.png" />
+			<span class="help-title">KMS服务</span>
+		</li>
+		<li class="summary">Windows及Office VOL版本激活服务</li>
+
+	</ul>
+</div>
+<div class="head-con">
+	<img class="app-icon" src="/luci-static/images/app-icon/kms.png" />
+	<a href="javascript:history.go(-1);" class="head-btn-l">
+		<i class="head-btn icon icon_back"></i>
+		<span class="head-title">KMS服务</span>
+	</a>
+</div>
+<div class="set-con below-head">
+	<ul class="set-con">
+		<li class="text-con">
+				<label class="desc-lbl">启用KMS服务</label>
+				<span class="set-con-middle">
+				<span id="EnableSwitch" class="switch">
+					<i class="switch-circle icon_select_off"></i>
+				</span>
+				</span>
+		</li>
+	</ul>
+	<div id="Param">
+		<ul class="set-con">
+			<li class="text-con">
+				<label class="desc-lbl">启用自动激活</label>
+				<span class="set-con-middle">
+					<span id="AutoSwitch" class="switch">
+						<i class="switch-circle icon_select_off"></i>
+					</span>
+				</span>
+			</li>
+		</ul>
+		<ul class="set-con">
+			<li class="text-con text-con-focus">
+				<label class="desc-lbl">运行状态</label>
+				<input id="CurSwVer" class="text hover" readonly="readonly" value="<%=Run_str%>">
+			</li>
+		</ul>
+		<ul class="set-con below-head" style="margin:17px 6px 8px 0;">
+			<li>
+				<p class="set-con-desc" style="text-align: center">
+					<label class="tip-lbl">运行日志</label>
+				</p>
+				<textarea style="width: 90%;margin-top:16px;margin-left:16px;" id="dip_content" rows="15"><%=info%></textarea>
+			</li>
+		</ul>
+		<div class="err-note hidden">
+			<i class="err-icon icon_remind_line"></i>
+			<p class="note-str"></p>
+		</div>
+	</div>
+	<div class="err-note">
+		<p class="note-str price-remark">&nbsp</p>
+	</div>
+	<div class="btn-con">
+		<input id="Save" class="btn" type="button" value="{%btn.save%}" />
+	</div>
+</div>
+

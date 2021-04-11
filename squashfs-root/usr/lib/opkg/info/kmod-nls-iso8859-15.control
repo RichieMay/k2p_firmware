@@ -1,0 +1,10 @@
+Package: kmod-nls-iso8859-15
+Version: 3.10.14-1
+Depends: kernel (=3.10.14-1-869a8ec0260b1131c22159c913023820), kmod-nls-base
+Source: package/kernel/linux
+License: GPLv2
+Section: kernel
+Status: unknown hold not-installed
+Architecture: ramips_1004kc
+Installed-Size: 1862
+Description:  unknown

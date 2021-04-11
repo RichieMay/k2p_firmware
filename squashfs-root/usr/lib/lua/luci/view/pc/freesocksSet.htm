@@ -1,0 +1,60 @@
+<style type="text/css">
+	ul.switch-bottom{
+		margin-bottom:30px;
+	}
+	.set-con-desc+textarea{
+		margin-top: 16px;
+	}
+</style>
+<script type="text/javascript">
+$(function(){
+    <%-
+      gfwlist=nixio.fs.readfile("/etc/freesocks.d/gfwlist.conf") or "# --------------GFW列表规则 --------------\n# 比如要添加www.xxxx.com到gfwlist列表中，写法如下：\n# server=/.xxxx.com/127.0.0.1#5353\n# ipset=/.xxxx.com/gfwlist\n# -------------------------------------------------"
+    -%>
+	
+    $("#Save").click(function(){
+      var param = {};
+      param.freesocks_set = {};
+      param.freesocks_set.config = {};
+      param.freesocks_set.config.gfwlist = $("#gfw_content").val();
+
+      showLoading(label.saving);
+      apiSet(param, function(ret) {
+        $.setTimeout(function() {
+          closeLoading();
+          alert("保存完成！需要重启Freesocks生效！");
+        }, ret[K_MODULE].freesocks_set.config.wait_time * 1000);
+      });
+    });
+});
+</script>
+
+<div class="help hidden">
+	<ul class="help-content">
+		<li class="help-head">
+			<img class="app-icon" src="./luci-static/images/app-icon/freesocks.png" />
+			<span class="help-title">Freesocks-高级设置</span>
+		</li>
+		<li class="summary">Freesocks客户端用于与Freesocks服务器建立加密连接通道，在此可设置Freesocks的高级参数</li>
+	</ul>
+</div>
+<div class="head-con">
+	<img class="app-icon" src="./luci-static/images/app-icon/freesocks.png" />
+	<a href="javascript:history.go(-1);" class="head-btn-l">
+		<i class="head-btn icon icon_back"></i>
+		<span class="head-title">Freesocks-高级设置</span>
+	</a>
+</div>
+
+<hr>
+<div class="set-con below-head"  style="margin:17px 6px 8px 0;">
+	<li>
+		<p class="set-con-desc" style="text-align: center;">
+			<label class="tip-lbl">GFW列表规则</label>
+		</p>
+		<textarea  style="width: 85%;margin-left:50px;"  id="gfw_content" rows="25"><%=gfwlist%></textarea>
+	<li>
+</div>
+<div class="btn-con" style="border-bottom: 1px solid #DDD;">
+	<input id="Save" class="btn"   type="button" value="保存">
+</div>

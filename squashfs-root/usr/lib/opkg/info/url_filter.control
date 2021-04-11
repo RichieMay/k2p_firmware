@@ -1,0 +1,8 @@
+Package: url_filter
+Version: 1.0.0.0-1
+Depends: libc, libubus, libubox, libnfnetlink, libuci, libnetfilter-queue
+Source: package/phicomm/url_filter
+Section: Phicomm Properties
+Architecture: ramips_1004kc
+Installed-Size: 6198
+Description:  unknown

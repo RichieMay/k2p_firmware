@@ -1,0 +1,8 @@
+Package: kmod-arp_defence
+Version: 3.10.14-1
+Depends: kernel (=3.10.14-1-869a8ec0260b1131c22159c913023820)
+Source: package/phicomm/arp_defence
+Section: kernel
+Architecture: ramips_1004kc
+Installed-Size: 6040
+Description:  unknown

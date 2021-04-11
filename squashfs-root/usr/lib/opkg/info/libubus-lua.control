@@ -1,0 +1,10 @@
+Package: libubus-lua
+Version: 2017-02-03-763b9b2cf293fb60b5c2ddf34e2500f95200b6b5
+Depends: libc, libubus, liblua
+Source: package/system/ubus
+License: LGPL-2.1
+Section: libs
+Maintainer: Felix Fietkau <nbd@nbd.name>
+Architecture: ramips_1004kc
+Installed-Size: 6781
+Description:  unknown

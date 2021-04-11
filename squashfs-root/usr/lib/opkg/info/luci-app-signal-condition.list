@@ -1,0 +1,8 @@
+/etc/config/signal-condition
+/usr/lib/lua/luci/data/signal_condition.lua
+/usr/lib/lua/luci/data/signal_condition_plt.lua
+/usr/lib/lua/luci/controller/admin/signal_condition.lua
+/usr/lib/lua/luci/view/h5/signalCondition.htm
+/usr/lib/lua/luci/view/pc/signalCondition.htm
+/www/luci-static/images/app-icon/signal_condition.png
+/usr/lib/lua/luci/controller/admin/signal_condition_plt.lua

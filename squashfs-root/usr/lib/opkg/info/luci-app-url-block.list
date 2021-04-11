@@ -1,0 +1,7 @@
+/usr/lib/lua/luci/view/pc/urlBlock.htm
+/www/luci-static/images/app-icon/url_block.png
+/usr/lib/lua/luci/data/url_block_plt.lua
+/usr/lib/lua/luci/controller/admin/url_block_plt.lua
+/usr/lib/lua/luci/controller/admin/url_block.lua
+/usr/lib/lua/luci/data/url_block.lua
+/usr/lib/lua/luci/view/pc/urlSet.htm

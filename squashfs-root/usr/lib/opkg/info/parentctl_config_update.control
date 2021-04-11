@@ -1,0 +1,8 @@
+Package: parentctl_config_update
+Version: 1
+Depends: libc, phicomm_libs, libuci
+Source: package/phicomm/parentctl_config_update
+Section: Phicomm Properties
+Architecture: ramips_1004kc
+Installed-Size: 4933
+Description:  unknown

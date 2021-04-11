@@ -1,0 +1,8 @@
+Package: white_list
+Version: 0.0.0-1
+Depends: libc, libubox, libuci, libjson-c
+Source: package/phicomm/white_list
+Section: Phicomm Properties
+Architecture: ramips_1004kc
+Installed-Size: 7229
+Description:  unknown

@@ -1,0 +1,4 @@
+
+config kms 'kms'
+	option enable '0'
+	option autokms '0'

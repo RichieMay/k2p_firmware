@@ -1,0 +1,118 @@
+<style type="text/css">#Con{background-color:#FFF}#Content{border:0 solid #DDD}div.pic-left{position:fixed;top:0;left:24px;width:311px;height:208px;background:url(/luci-static/images/pic_left.png?_=20180420151033) no-repeat}div.app-list{position:relative;z-index:100;font-size:0;width:100%}ul.app-list{font-size:0;width:100%;margin:95px auto;text-align:left}li.app-item{color:#ac0;width:25%;margin:auto;display:inline-block;vertical-align:middle}li.app-item .app-icon{display:inline-block;width:80px;height:80px;text-align:center;border-radius:12px}li.app-item div.app-desc{display:inline-block;vertical-align:top;height:80px;margin-left:10px;margin-right:8px}li.app-item p.app-name{color:#4f5356;font-size:18px;margin:2px auto 4px}li.app-item p.app-desc{color:#909396;font-size:14px;width:9em}</style>
+<script type="text/javascript">
+(function(){
+	<%
+		local dev_para = {
+			dev_feature = {mode_switch = {}}
+		}
+		local dev_result = tpl_get_data(dev_para)
+		local mode_switch_cap = dev_result[K_MODULE].dev_feature.mode_switch.support
+
+		local para = {
+			dev_feature = {app_pc = {}}
+		}
+
+		if "1" == mode_switch_cap then
+			local mode_switch = {}
+			mode_switch["config"] = {}
+			para["mode_switch"] = mode_switch
+			para.dev_feature["app_ap"] = {}
+		end
+
+		local data = tpl_get_data(para, true)
+	-%>
+
+	var data = <%=data%>;
+	var modeSwitchCap = "<%=mode_switch_cap%>";
+	var appInfo;
+	appInfo = data[K_MODULE].dev_feature.app_pc;
+	if ("1" == modeSwitchCap){
+		var modeSwitch = data[K_MODULE].mode_switch.config;
+		if ("ap" == modeSwitch.mode){
+			appInfo = data[K_MODULE].dev_feature.app_ap;
+		}
+	}
+
+	var appListAll = [{href:"#/pc/routerInfoApp", icon:"router_status", name:label.routerInfo, desc:label.routerInfoTip, value:"system-status"},
+				   {href:"#/pc/networksetApp", icon:"internet", name:label.networkset, desc:label.networksetTip, value:"network-set"},
+				   {href:"#/pc/guestApp", icon:"guest", name:label.guestNet, desc:label.guestNetTip, value:"guest-wifi"},
+				   {href:"#/pc/adbApp", icon:"adb", name:"广告屏蔽", desc:"过滤网页和视频广告", value:"adb"},
+				   {href:"#/pc/parentCtrlApp", icon:"parent_ctrl", name:label.parentCtrl, desc:label.parentCtrlTip, value:"parent-ctrl"},
+				   {href:"#/pc/backupResetApp", icon:"restore", name:label.backupReset, desc:label.backupResetTip, value:"backup-reset"},
+				   {href:"#/pc/signalSetApp", icon:"signal", name:label.signalSet, desc:label.signalSetTip, value:"siginal-power"},
+				   {href:"#/pc/wispApp", icon:"wisp", name:label.wisp, desc:label.wispTip, value:"wisp"},
+				   {href:"#/pc/wdsApp", icon:"wds", name:label.wds, desc:label.wdsTip, value:"wds"},
+				   {href:"#/pc/freesocksApp", icon:"freesocks", name:"Freesocks", desc:"Freesocks客户端", value:"freesocks"},
+
+				   {href:"#/pc/modeSwitchApp", icon:"mode_switch", name:label.modeSet, desc:label.modeSetTip, value:"mode-switch"},
+				   {href:"#/pc/woLinkApp", icon:"wo_link", name:label.woLinkSet, desc:label.woLinkSetTip, value:"wo-link"},
+				   {href:"#/pc/igmpApp", icon:"igmp", name:label.igmpSet, desc:label.igmpSetTip, value:"igmp"},
+				   {href:"#/pc/screenSetApp", icon:"screen", name:label.screenSet, desc:label.screenSetTip, value:"screen-set"},
+				   {href:"#/pc/usbStorageApp", icon:"usb", name:label.usbStorage, desc:label.usbStorageTip, value:"usb"},
+				   {href:"#/pc/QoSApp", icon:"qos", name:label.QoS, desc:label.QoSTip, value:"QoS"},
+				   {href:"#/pc/autoUpgradeApp", icon:"upgrade", name:label.autoUpgrade, desc:label.autoUpgradeTip, value:"auto-upgrade"},
+				   {href:"#/pc/diagnoseApp", icon:"diagnose", name:label.diagnose, desc:label.diagnoseTip, value:"diagnose"},
+				   {href:"#/pc/diagnoseApp", icon:"diagnose", name:label.diagnose, desc:label.diagnoseTip, value:"onekey-diagnose"},
+				   {href:"#/pc/safeMngApp", icon:"security", name:label.safeMng, desc:label.safeMngTip, value:"safe-set"},
+				   {href:"#/pc/toolsApp", icon:"tools",  name:"高级设置", desc:"设置启动任务、定时任务等", value:"tools"},
+
+				   {href:"#/pc/manualUpgradeApp", icon:"upload", name:label.manualUpgrade, desc:label.manualUpgradeTip, value:"manual-upgrade"},
+				   {href:"#/pc/remoteMngApp", icon:"remote", name:label.remoteMng, desc:label.remoteMngTip, value:"remote-manage"},
+				   {href:"#/pc/lanSetApp", icon:"lan", name:label.lanSet, desc:label.lanSetDesc, value:"lan-set"},
+				   {href:"#/pc/kmsApp", icon:"kms",  name:"KMS服务", desc:"Windows及Office VOL版本激活服务", value:"kms"},
+
+				   {href:"#/pc/dhcpServerApp", icon:"dhcp", name:label.dhcpServer, desc:label.dhcpServerTip, value:"dhcp-server"},
+				   {href:"#/pc/ddnsApp", icon:"ddns", name:label.ddns, desc:label.ddnsTip, value:"ddns"},
+				   {href:"#/pc/portForwadApp", icon:"port_forward", name:label.portForwad, desc:label.portForwadTip, value:"port-forward"},
+				   {href:"#/pc/dmzApp", icon:"dmz", name:label.dmz, desc:label.dmzTip, value:"DMZ"},
+				   {href:"#/pc/UPnPApp", icon:"upnp", name:label.UPnP, desc:label.UPnPTip, value:"UPnP"},
+				   {href:"#/pc/lightApp", icon:"led", name:label.ledSet, desc:label.ledTip, value:"light"},
+				   {href:"#/pc/timeZoneApp", icon:"timezone", name:label.regionTimeZone, desc:label.regionTimeZoneTip, value:"time-zone"},
+				   {href:"#/pc/VPNServerApp", icon:"vpn_server", name:label.VPNServer, desc:label.VPNServerTip, value:"vpn-server"},
+				   {href:"#/pc/VPNClientApp", icon:"vpn_cilent", name:label.VPNClient, desc:label.VPNClientTip, value:"vpn-client"},
+				   {href:"#/pc/PhiCloudApp", icon:"cloud", name:label.PhiCloud, desc:label.PhiCloudTip, value:"cloud"},
+				   {href:"#/pc/PhiCDNApp", icon:"cdn", name:label.PhiCDN, desc:label.PhiCDNTip, value:"cdn"},
+				   {href:"#/pc/gameApp", icon:"game", name:label.gameSet, desc:label.gameTip, value:"game"},
+				   {href:"#/pc/signalConditionApp", icon:"signal_condition", name:label.signalCondition, desc:label.signalConditionTip, value:"signal-condition"},
+				   {href:"#/pc/timeSleepApp", icon:"time_sleep", name:label.timeSleep, desc:label.timeSleepTip, value:"time-sleep"},
+				   {href:"#/pc/whiteListApp", icon:"white_list", name:label.whiteList, desc:label.whiteListSet, value:"white-list"},
+				   {href:"/luci-static/online-help/Default.htm", icon:"online_help", name:label.onlineHelp, desc:label.onlineHelpTip, value:"online-help"},
+				   {href:"#/pc/elinkApp", icon:"elink", name:label.elinkSet, desc:label.elinkSetTip, value:"elink"},
+				   {href:"#/pc/urlBlockApp", icon:"url_block", name:label.urlBlock, desc:label.urlBlockTip, value:"url-block"},
+				   {href:"#/pc/iptvApp", icon:"iptv", name:label.iptv, desc:label.iptvTip, value:"iptv"},
+				   {href:"#/pc/ipv6App",icon:"ipv6",name:label.ipv6,desc:label.ipv6Tip, value:"ipv6"}];
+
+	var appList = productSelect(appListAll, appInfo.installed);
+
+	function initAppList(appList){
+		function initApp(app){
+			var targetStr = (app.value == "online-help")?' target="_blank" ':''
+			var icon = "/luci-static/images/app-icon/" + app.icon + ".png?_=20180420151033";
+			var appHtml = '<a href="' + app.href + '"' + targetStr + '><li class="app-item">' +
+							'<img class="app-icon" src="' + icon + '" />' +
+							'<div class="app-desc">' +
+								'<p class="app-name">' + app.name + '</p>' +
+								'<p class="app-desc">' + app.desc + '</p>' +
+							'</div></li></a>';
+			return $(appHtml);
+		}
+
+		var colNum = 4;
+		var len = appList.length;
+		var rowNum = Math.ceil(len / colNum);
+		var idx = 0;
+		var appCon = $("#AppList");
+
+		for (var i = 0, idx = 0; i < rowNum; i++){
+			var ul = $('<ul class="app-list"></ul>').appendTo(appCon);
+			for (var j = 0; j < colNum && idx < len; j++, idx++){
+				initApp(appList[idx]).appendTo(ul);
+			}
+		}
+	}
+
+	initAppList(appList);
+})();
+</script>
+<div class="pic-left"></div>
+<div class="app-list" id="AppList"></div>

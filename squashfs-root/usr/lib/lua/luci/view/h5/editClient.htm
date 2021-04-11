@@ -1,0 +1,208 @@
+<style type="text/css">i.left-icon{color:#1499e6;display:inline-block;line-height:.75rem;width:1rem;height:.75rem;border-radius:.1rem;vertical-align:middle}i.icon_speed_up{color:#1499e6;font-size:1rem}i.icon_speed{color:#1fb66f;font-size:1rem}i.verdor-icon{font-size:1.6rem;position:relative;float:left;margin:0;width:20%;height:2.133rem;line-height:2.133rem}li.text-con input.textA{margin-left:1rem;width:3rem;background-color:#FFF}span.unit{font-size:.387rem;color:#2a2c32;vertical-align:middle}ul.detail{position:relative;color:#2a2c32;font-size:.387rem}ul.detail p.info{line-height:1.067rem;margin-left:1.333rem}p.info span{margin-left:.25em}li.text-con{width:70%}li.text-small{width:5rem}</style><script type="text/javascript">
+(function(){
+	var param = stateman.current.param;
+	var client = {};
+	for (var k in param){
+		var key = decodeURIComponent(k);
+		var val = decodeURIComponent(param[k]);
+		client[key] = val;
+	}
+
+	var vendor;
+	if(client.brand){
+		vendor = "icon_" + getAlias(client.brand);
+	}else{
+		vendor = "icon_" + getVendor(client.mac);
+	}
+	$("#VendorIcon").addClass(vendor);
+	$("#DeviceName").val(client.name);
+	$("#UpSwitch").attr("data-value", "1");
+	$("#DownSwitch").attr("data-value", "1");
+	$("#MacAddr span").text(client.mac);
+
+	if (client.ip != BROWSER.ip && 4 != client.device_type){
+		if (0 == param.whiteListEnable || 0 == client.device_type){
+			initSwitch("NetSwitch", client.internet_enable);
+		}
+	}
+
+	if (4 == client.device_type){
+		$("#UploadSpeed").val("----").attr("disabled", "disabled");
+		$("#DownloadSpeed").val("----").attr("disabled", "disabled");
+	}else{
+		var upSwitchState = 0;
+		if (0 == client.upload_limit){
+			upSwitchState = 0;
+			$("#UploadSpeed").val("");
+		}else{
+			upSwitchState = 1;
+			$("#UploadSpeed").val(client.upload_limit);
+		}
+
+		initSwitch("UpSwitch", upSwitchState, function(state){
+			if (1 == state){
+				$("#UploadSpeed").val(client.upload_limit).removeAttr("disabled");
+			}else{
+				$("#UploadSpeed").val("").attr("disabled", "disabled");
+			}
+		});
+
+		var downSwitchState = 0;
+		if (0 == client.download_limit){
+			downSwitchState = 0;
+			$("#DownloadSpeed").val("");
+		}else{
+			downSwitchState = 1;
+			$("#DownloadSpeed").val(client.download_limit);
+		}
+
+		initSwitch("DownSwitch", downSwitchState, function(state){
+			if (1 == state){
+				$("#DownloadSpeed").val(client.download_limit).removeAttr("disabled");
+			}else{
+				$("#DownloadSpeed").val("").attr("disabled", "disabled");
+			}
+		});
+	}
+
+	if (1 == client.online_status){
+		$("#IpAddr span").text(client.ip);
+		$("#Time span").text(timeTrans(client.online_time));
+	}else{
+		$("#Time").hide();
+		$("#IpAddr").hide();
+	}
+
+	function checkDevName(username){
+		if ("" == username){
+			return E_DIVICE_NAME_BLANK;
+		}
+
+		if (E_NONE != checkStrLen(username, 32, 1)){
+			return E_DIVICE_NAME_LEN;
+		}
+
+		return E_NONE;
+	}
+
+	function checkItems(speed, limitType){
+		var err = checkNumNew(speed, 0, 4096);
+
+		if ("" == speed){
+			return E_NONE;
+		}
+
+		switch(err){
+		case E_NUMFORMAT:
+			return eval("E_DIVICE_"+limitType+"_LIMIT_ILLEGAL");
+		case E_NUMRANGE:
+			return eval("E_DIVICE_"+limitType+"_LIMIT_RANGE");
+		}
+
+		return E_NONE;
+	}
+
+	$("#Save").click(function(){
+		var devName = $("#DeviceName").val();
+		var upSpeed = $("#UploadSpeed").val() || "0";
+		var downSpeed = $("#DownloadSpeed").val() || "0";
+
+		closeNote();
+
+		if (handleError(checkDevName(devName))){
+			return;
+		}
+
+		if (handleError(checkItems(upSpeed, "UP"))){
+			return;
+		}
+
+		if (handleError(checkItems(downSpeed, "DOWN"))){
+			return;
+		}
+
+		var data = {};
+		var para = {};
+
+		para.device_manage = {};
+		para.device_manage.client_list = data;
+
+		data.ip = client.ip;
+		data.mac = client.mac;
+		data.name = devName;
+		data.internet_enable = $("#NetSwitch").attr("data-value");
+		data.upload_limit = upSpeed;
+		data.download_limit = downSpeed;
+
+		showLoading(label.saving);
+		apiSet(para, function(ret){
+			var code = ret[ERR_CODE];
+			handleError(code, showNote)?closeLoading():closeLoading(2);
+		});
+	});
+})();
+</script>
+
+<div class="head-con">
+	<a href="javascript:history.go(-1);" class="head-btn-l"><i class="head-btn icon icon_back"></i></a>
+	<h1 class="head-title">{%label.editClient%}</h1>
+</div>
+<div class="set-con below-head">
+	<ul class="blank-bg"></ul>
+	<ul class="set-con">
+		<i id="VendorIcon" class="verdor-icon"></i>
+		<label class="desc-lbl">{%label.deviceName%}</label>
+		<li class="text-con">
+			<input id="DeviceName" class="text hover" maxLength="32" value="" />
+		</li>
+	</ul>
+	<ul class="blank-bg"></ul>
+	<ul class="set-con">
+		<label class="desc-lbl">{%label.internetSet%}</label>
+		<span id="NetSwitch" class="switch" data-value="1">
+			<i class="switch-circle"></i>
+		</span>
+	</ul>
+	<ul class="blank-bg"></ul>
+	<ul class="set-con-title">
+		<label class="title-desc-lbl">{%label.speedLimit%}</label>
+	</ul>
+	<ul class="set-con">
+		<i class="icon left-icon icon_speed_up"></i>
+		<label class="desc-lbl">{%label.uploadSpeed%}</label>
+		<li class="text-con text-small">
+			<input id="UploadSpeed" class="text hover textA" maxLength="4" value="" placeholder="{%label.unlimit%}" />
+		</li>
+		<span class="unit">KB/s</span>
+		<span id="UpSwitch" class="switch" data-value="0">
+			<i class="switch-circle"></i>
+		</span>
+	</ul>
+	<ul class="set-con">
+		<i class="icon left-icon icon_speed"></i>
+		<label class="desc-lbl">{%label.downloadSpeed%}</label>
+		<li class="text-con text-small">
+			<input id="DownloadSpeed" class="text hover textA" maxLength="4" value="" placeholder="{%label.unlimit%}" />
+		</li>
+		<span class="unit">KB/s</span>
+		<span id="DownSwitch" class="switch" data-value="0">
+			<i class="switch-circle"></i>
+		</span>
+	</ul>
+	<ul class="blank-bg"></ul>
+	<ul class="set-con-title">
+		<label class="title-desc-lbl">{%label.detail%}</label>
+	</ul>
+	<ul class="detail">
+		<p class="info" id="IpAddr">{%label.ipaddr%}{%label.colon%}<span></span></p>
+		<p class="info" id="MacAddr">{%label.macAddr%}{%label.colon%}<span></span></p>
+		<p class="info" id="Time">{%label.hasConnected%}{%label.colon%}<span></span></p>
+	</ul>
+	<div class="err-note hidden">
+		<i class="err-icon icon_remind_line"></i>
+		<p class="note-str"></p>
+	</div>
+	<div class="btn-con">
+		<input id="Save" class="btn" type="button" value="{%btn.save%}" />
+	</div>
+</div>

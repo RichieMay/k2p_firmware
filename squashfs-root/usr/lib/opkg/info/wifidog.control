@@ -1,0 +1,11 @@
+Package: wifidog
+Version: 1.3.0-1
+Depends: libc, libpthread, libcurl, libjson-c, libuci, phicomm_libs
+Source: package/phicomm/wifidog
+License: GPL-2.0
+LicenseFiles: COPYING
+Section: Phicomm Properties
+Maintainer: Michael Haas <haas@computerlinguist.org>
+Architecture: ramips_1004kc
+Installed-Size: 71389
+Description:  unknown

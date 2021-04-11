@@ -1,0 +1,243 @@
+<style type="text/css">div.set-status{top:1.067rem;bottom:2rem;width:100%;position:absolute}ul.wifi-list{position:relative;width:100%;text-align:center;top:2rem}li.wifi-item{display:inline-block}li.wifi-item div.wifi-icon{width:3.148rem;height:3.148rem;border-radius:50%;border:.5px solid #DDD;position:relative}li.list-right{margin-left:1.176rem}li.wifi-item i.icon{position:absolute;font-size:2rem;color:#fe8f19;top:.148rem;left:.574rem}div.wifi-icon i.band-icon{position:absolute;font-size:1.4rem;color:#fe8f19;top:1.4rem;left:.874rem}span.wifi-name{position:relative;font-size:.387rem;color:#3f4044;width:3.148rem;display:inline-block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}div.wifi-tip{margin-top:3.418rem;color:#3f4044;font-size:.387rem;text-align:center;padding:0 .6rem}p.list-con-bottom{margin-top:.185rem}div.btn-success{position:absolute;bottom:0;width:100%;height:2rem;margin:0;text-align:center;font-size:0}ul.set-con{padding:0 1rem;margin:0}div.err-note{padding:0 1rem 0 .6rem}ul.set-con-title{margin:0 1rem}div.btn-con{margin:.5rem 1rem}span.switch{right:1rem}div.set-con{position:absolute;width:100%}</style>
+<%+wifi-config-script%>
+<script type="text/javascript">
+(function(){
+	<%
+		local dev_para = {
+			dev_feature = {smart_connect = {}}
+		}
+		local dev_result = tpl_get_data(dev_para)
+		local smart_connect_cap = dev_result[K_MODULE].dev_feature.smart_connect.support
+
+		local para = {
+			wireless = {wifi_2g_config = {}, wifi_5g_config = {}}
+		}
+		if "1" == smart_connect_cap then
+			para.wireless["smart_connect"] = {}
+		end
+
+		local data = tpl_get_data(para, true)
+	-%>
+
+	var wirelessInfo = <%=data%>;
+	var smartConnectCap = "<%=smart_connect_cap%>";
+
+	function init(result){
+		var errNo = result[ERR_CODE];
+		var ret;
+		if (E_NONE == errNo){
+			ret = result[K_MODULE];
+		}else{
+			console.log(result);
+			return;
+		}
+
+		var wireless2G = ret.wireless.wifi_2g_config;
+		var wireless5G = ret.wireless.wifi_5g_config;
+		$("#Ssid2G").val(wireless2G.ssid);
+		$("#Ssid5G").val(wireless5G.ssid);
+		$("#Pwd2G").val(wireless2G.password);
+		$("#Pwd5G").val(wireless5G.password);
+
+		if ("1" == smartConnectCap) {
+			var smartConnect;
+			smartConnect = ret.wireless.smart_connect;
+			initSwitch("Two2One", smartConnect.enable, function(state, init){
+				if (0 == state){
+					$("#Wifi5G").show();
+					$("#WifiName").html(label.wifi2G);
+				}else{
+					$("#Wifi5G").hide();
+					$("#WifiName").html(label.wifiName);
+					closeNote();
+				}
+
+				if (!init){
+					$("#Ssid5G").val(getStrInMaxByte($("#Ssid2G").val(), 29) + "_5G");
+				}
+			});
+		} else {
+			$("#CanSmartConn").hide();
+		}
+	}
+
+	init(wirelessInfo);
+
+	$("#PreviousStep").click(function(){
+		stateman.go("guideNetworkSet");
+	});
+
+	$("#SaveReboot").click(function(){
+		if ("1" == smartConnectCap && 1 == $("#Two2One").attr("data-value")){
+			$("#Ssid5G").val($("#Ssid2G").val());
+			$("#Pwd5G").val($("#Pwd2G").val());
+		}
+
+		saveWifi();
+	});
+
+	$("#MoreSet").click(function(){
+		window.location.reload(true);
+	});
+	function sendConfig(para){
+		apiSetWithModule("wireless", para, function(ret){
+			var code = ret[ERR_CODE];
+			if (E_NONE == code){
+				var time = getMaxWaitTime(ret);
+				$.setTimeout(function(){
+					closeLoading();
+					$("#WifiSet").hide();
+					$("#WifiWait").show();
+					$("#Connect2G").text($("#Ssid2G").val()).attr("title",$("#Ssid2G").val());
+					$("#Connect5G").text($("#Ssid5G").val()).attr("title",$("#Ssid5G").val());
+				}, time * 1000);
+			}else{
+				handleError(code, showNote, para.wireless.smart_connect);
+				closeLoading();
+			}
+		});
+	}
+	function saveWifi(){
+		var para = {};
+		var wifi_2g_config = {};
+		var wifi_5g_config = {};
+		para.wireless = {};
+		para.wireless.wifi_2g_config = wifi_2g_config;
+		para.wireless.wifi_5g_config = wifi_5g_config;
+
+		wifi_2g_config.ssid = $("#Ssid2G").val();
+		wifi_2g_config.password = $("#Pwd2G").val();
+		wifi_5g_config.ssid = $("#Ssid5G").val();
+		wifi_5g_config.password = $("#Pwd5G").val();
+		para.welcome = {};
+		para.welcome.config = {};
+		para.welcome.config.guide = "0";
+
+		var smart_connect = {};
+		if ("1" == smartConnectCap){
+			para.wireless.smart_connect = smart_connect;
+			smart_connect.enable = $("#Two2One").attr("data-value");
+		} else {
+			smart_connect.enable = 0;
+		}
+
+		var bandType = "2g";
+		if (handleError(checkSsid(wifi_2g_config.ssid, bandType), showNote, smart_connect.enable)){
+			return;
+		}
+
+		if (handleError(checkPwd(wifi_2g_config.password, bandType), showNote, smart_connect.enable)){
+			return;
+		}
+
+		bandType = "5g";
+		if (handleError(checkSsid(wifi_5g_config.ssid, bandType))){
+			return;
+		}
+
+		if (handleError(checkPwd(wifi_5g_config.password, bandType))){
+			return;
+		}
+
+		if (wifi_5g_config.ssid == wifi_2g_config.ssid && wifi_5g_config.password != wifi_2g_config.password){
+			handleError(E_WIFI2G_WIFI5G_SSID_SAME, showNote, smart_connect.enable);
+			return;
+		}
+
+		if (wifi_2g_config.password == "" || wifi_5g_config.password == ""){
+			showConfirm(errStr.emptyWifiPwd, function(choose){
+				if (choose){
+					showLoading(label.saveWifi);
+					sendConfig(para);
+				}
+			});
+		} else {
+			showLoading(label.saveWifi);
+			sendConfig(para);
+		}
+	}
+})();
+</script>
+<div class="head-con">
+	<h1 class="head-title">{%label.wifiSet%}</h1>
+</div>
+<div class="set-con below-head" id="WifiSet">
+	<ul class="blank-bg"></ul>
+	<ul class="set-con" id="CanSmartConn">
+		<div class="switch-con set-switch">
+			<label class="desc-title">{%label.twoInone%}</label>
+			<span id="Two2One" class="switch">
+				<i class="switch-circle"></i>
+			</span>
+		</div>
+		<p class="desc-tetail">{%label.wifiRemark%}</p>
+	</ul>
+	<ul class="set-con-title">
+		<label class="title-desc-lbl" id="WifiName">{%label.wifi2G%}</label>
+	</ul>
+	<ul class="set-con">
+		<label class="desc-lbl">{%label.ssidName%}</label>
+		<li class="text-con">
+			<input id="Ssid2G" class="text hover" maxLength="32" value="" />
+		</li>
+	</ul>
+	<ul class="set-con">
+		<label class="desc-lbl">{%label.password%}</label>
+		<li class="text-con">
+			<input id="Pwd2G" class="text hover" maxLength="63" value="" /><i class="tip icon-eye" data-value="0"></i>
+		</li>
+	</ul>
+	<div id="Wifi5G">
+		<ul class="blank-bg"></ul>
+		<ul class="set-con-title">
+			<label class="title-desc-lbl">{%label.wifi5G%}</label>
+		</ul>
+		<ul class="set-con">
+			<label class="desc-lbl">{%label.ssidName%}</label>
+			<li class="text-con">
+				<input id="Ssid5G" class="text hover" maxLength="32" value="" />
+			</li>
+		</ul>
+		<ul class="set-con">
+			<label class="desc-lbl">{%label.password%}</label>
+			<li class="text-con">
+				<input id="Pwd5G" class="text hover" maxLength="63" value="" /><i class="tip icon-eye" data-value="0"></i>
+			</li>
+		</ul>
+	</div>
+	<div class="err-note hidden">
+		<i class="err-icon icon_remind_line"></i>
+		<p class="note-str"></p>
+	</div>
+	<div class="btn-con btn-con-2">
+		<input id="PreviousStep" class="btn btn-left" type="button" value="{%btn.previousStep%}" />
+		<input id="SaveReboot" class="btn btn-right" type="button" value="{%btn.save%}" />
+	</div>
+</div>
+<div id="WifiWait" class="hidden">
+	<div class="set-status">
+		<ul class="wifi-list">
+			<li class="wifi-item">
+				<div class="wifi-icon">
+					<i class="icon icon_wirelessl" ></i>
+					<i class="icon_G_new1 band-icon" ></i>
+				</div>
+				<span class="wifi-name" id="Connect2G"></span>
+			</li>
+			<li class="wifi-item list-right">
+				<div class="wifi-icon">
+					<i class="icon icon_wirelessl" ></i>
+					<i class="icon_G_new band-icon" ></i>
+				</div>
+				<span class="wifi-name" id="Connect5G"></span>
+			</li>
+		</ul>
+		<div class="wifi-tip">
+			<p>{%label.createSuccess%}</p>
+			<p class="list-con-bottom">{%label.manualConnection%}</p>
+		</div>
+	</div>
+	<div class="btn-success">
+		<input id="MoreSet" class="btn btn-save" type="button" value="{%btn.moreSet%}" />
+	</div>
+</div>

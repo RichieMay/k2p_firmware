@@ -1,0 +1,7 @@
+/usr/lib/lua/luci/view/pc/timeSleep.htm
+/usr/lib/lua/luci/view/h5/timeSleep.htm
+/usr/lib/lua/luci/data/time_sleep_plt.lua
+/www/luci-static/images/app-icon/time_sleep.png
+/usr/lib/lua/luci/controller/admin/time_sleep_plt.lua
+/usr/lib/lua/luci/controller/admin/time_sleep.lua
+/usr/lib/lua/luci/data/time_sleep.lua

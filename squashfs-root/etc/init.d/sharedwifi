@@ -1,0 +1,27 @@
+#!/bin/sh /etc/rc.common
+# Copyright (C) 2006 OpenWrt.org
+START=99
+
+start() {
+	grep -q "sharedwifi_daemon" /etc/crontabs/root
+	if [ $? = 1 ]; then
+		echo "* * * * * /usr/bin/sharedwifi_daemon.sh" >> /etc/crontabs/root
+	fi
+	ret=`uci get sharedwifi.wifidog.enable`
+	echo "start wifidog ret=$ret."
+	if [ $ret = '1' ]; then
+		wifidog -c /etc/wifidog/wifidog.conf
+	fi
+}
+
+stop() {
+	echo "stop wifidog...."
+	killall -INT wifidog
+	sleep 2
+	killall -9 wifidog
+}
+
+restart() {
+	stop
+	start
+}

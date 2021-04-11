@@ -1,0 +1,270 @@
+<style type="text/css">div.widget-con{position:absolute;left:0;right:0;top:0;bottom:0;width:800px;max-height:560px;overflow:hidden;border-radius:5px;background-color:#FFF;margin:auto}i.close-btn{top:7px;right:10px}p.system-time{margin:20px 35px 20px;font-size:12px;color:#3f4044}#TimePick{position:absolute;top:50px;width:800px}ul.hourList{width:80px;font-size:0;float:left;margin-top:-8px;text-align:center;list-style:none}ul.hourList li{font-size:12px;height:17px;color:#3f4044}ul.weekList{margin-left:80px;height:39px;line-height:39px}ul.weekList li{color:#3f4044;font-size:12px;width:97px;text-align:center;display:inline-block}table.tableWeek{float:left;font-weight:normal;border-collapse:collapse}td.weekTd{border:1px solid #DDD;margin:0;font-size:0;text-align:center}canvas.canvasDrag{position:absolute;left:80px;width:672px;height:408px;top:39px;cursor:pointer}i.tableICell{display:inline-block;height:14px;width:93px}div.pick-tip{position:absolute;bottom:0;text-align:right}span.pick-desc{font-size:12px;line-height:16px;vertical-align:middle;color:#4f5356;margin:0 10px 0 80px}span.cell-selected{display:inline-block;width:16px;height:16px;line-height:16px;background-color:#ff9002;vertical-align:middle}input.btn-width{width:120px;font-size:12px;margin-bottom:12px;margin-left:507px;margin-top:0;height:28px;line-height:28px}input.btn-width-right{width:120px;font-size:12px;margin-bottom:12px;margin-top:0;margin-left:0;height:28px;line-height:28px}span.time-tip{color:#f00}div.pick-note{position:absolute;top:10px;right:50px;text-align:right}span.pick-mark{display:inline-block;width:30px;height:20px;line-height:42px;background-color:#85bd22;vertical-align:middle}span.pick-note{display:inline-block;vertical-align:middle;font-size:13px;color:#4f5356}</style>
+<script type="text/javascript">
+(function(){
+	<%
+		local para = {
+			device = {info = {}}
+		}
+
+		local data = tpl_get_data(para, true)
+	-%>
+
+	var data = <%=data%>;
+	var sysStatus = data[K_MODULE].device.info;
+	var time = sysStatus.current_time;
+	var ruleList = [];
+	var oldList = [];
+	var currentMac = "";
+	var timeList = [];
+	$("#SysTime").text(showSysTime(time));
+	var val = sessionLS.getItem("ruleList") || "[]";
+	ruleList = JSON.parse(val);
+	val = sessionLS.getItem("oldList") || "[]";
+	oldList = JSON.parse(val);
+	currentMac = sessionLS.getItem("mac") || "";
+	var schedule = getSelData(getTimeCycle(currentMac, ruleList));
+	var elementHeight = $(".tableICell").height();
+	var elementWidth = $(".tableICell").width();
+	dateCtl = new DateControl("TimePick", {dateArray:schedule}, elementHeight, elementWidth);
+
+	$("#SaveTime").click(function(){
+		var selDate = dateCtl.getSelDate();
+		timeList = getTimeList(selDate);
+		if (handleError(checkTimeList(timeList), showAlert)){
+			return;
+		}
+		if(0 != setTimeCycle(currentMac, timeList, ruleList)){
+			var tmpRule = {};
+			tmpRule.mac = currentMac;
+			tmpRule.name = "";
+			tmpRule.cycle = JSON.parse(JSON.stringify(timeList));
+			ruleList.push(tmpRule);
+		}
+		showLoading(label.saving);
+		delParentCtrl(currentMac, oldList, ruleList, saveParentCtrl);
+	});
+
+	$("#CancelTime").click(function(){
+		$(".close-btn").click();
+		stateman.go("pc.parentCtrlApp");
+	});
+
+	var TimePickScroll = new NiceScroll("TimePick");
+	TimePickScroll.init();
+
+	function checkTimeList(timeList){
+		if(1 > timeList.length){
+			return E_PARENTCTRL_TIME_BLANK;
+		}
+
+		return E_NONE;
+	}
+
+	function getTimeList(selData){
+		var timeList = [];
+		var startTime = -1;
+		var endTime = -1;
+		for(var day = 0; day < 7; day++ ){
+			for(var hour = 0; hour < 24; hour ++ ){
+				if (0 < (selData[day] & Math.pow(2, hour))){
+					if(0 > startTime){
+						startTime = hour * 3600;
+						endTime = (hour + 1) * 3600;
+					} else {
+						endTime = (hour + 1) * 3600;
+					}
+				} else {
+					if(0 < endTime){
+						var timeCell = {};
+						timeCell.day = day;
+						timeCell.startTime = startTime;
+						timeCell.endTime = endTime;
+						timeList.push(timeCell);
+						startTime = -1;
+						endTime = -1;
+					}
+				}
+			}
+			if(0 < endTime){
+				var timeCell = {};
+				timeCell.day = day;
+				timeCell.startTime = startTime;
+				timeCell.endTime = endTime;
+				timeList.push(timeCell);
+				startTime = -1;
+				endTime = -1;
+			}
+		}
+
+		return timeList;
+	}
+
+	function getSelData(timeCycleList){
+		schedule = [0,0,0,0,0,0,0];
+		for(var i = 0; i < timeCycleList.length; i ++){
+			var day = timeCycleList[i].day;
+			var startHour = Math.floor(timeCycleList[i].startTime/3600);
+			var endHour = Math.floor(timeCycleList[i].endTime/3600);
+			for(var hour = startHour; hour < endHour; hour ++){
+				schedule[day] |= Math.pow(2, hour);
+			}
+
+		}
+		return schedule;
+	}
+	function getCycleList(cycleList, cycle, startTime){
+		for(var i=0; i<cycle.length; i++){
+			if(cycle[i].startTime <= startTime && cycle[i].endTime > startTime){
+				cycleList = addDayToCycle(cycleList,cycle[i].day);
+			}
+		}
+		return cycleList;
+	}
+	function saveParentCtrl(mac, ruleList){
+		var data = [];
+		var para = {};
+		para.parent_ctrl = {};
+		var rule = getRuleByMac(mac, ruleList);
+		var cycle = rule.cycle;
+		if(cycle.length <= 24){
+			for(var i=0; i<cycle.length; i++){
+				var cell = {};
+				cell.id = "";
+				cell.start_time = cycle[i].startTime;
+				cell.end_time = cycle[i].endTime;
+				cell.cycle = dayToCycle(cycle[i].day);
+				cell.mac = mac;
+				cell.name = rule.name;
+				data.push(cell);
+			}
+		} else {
+			for(var i=0; i<24; i++){
+				var cell = {};
+				cell.cycle = "0000000";
+				cell.id = "";
+				cell.start_time = i*3600;
+				cell.end_time = (i+1)*3600;
+				cell.cycle = getCycleList(cell.cycle, cycle, i*3600);
+				cell.mac = mac;
+				cell.name = rule.name;
+				if(cell.cycle.indexOf("1") >= 0){
+					data.push(cell);
+				}
+			}
+		}
+
+		parent_list = {};
+		parent_list.rule_list = data;
+		para.parent_ctrl.parent_list = parent_list;
+		apiAdd(para, function(ret){
+			var errCode = ret[ERR_CODE];
+			if(E_NONE == errCode){
+				stateman.go("pc.parentCtrlApp");
+			} else {
+				handleError(code);
+			}
+			closeLoading();
+			$(".close-btn").click();
+		});
+	}
+
+	function delParentCtrl(mac, oldList, ruleList, callback){
+		var data = [];
+		var para = {};
+		para.parent_ctrl = {};
+		parent_list = {};
+		parent_list.rule_list = data;
+		for(var i=0; i<oldList.length; i++){
+			if(mac == oldList[i].mac){
+				var cell = {};
+				cell.id = oldList[i].id;
+				data.push(cell);
+			}
+		}
+		para.parent_ctrl.parent_list = parent_list;
+		apiDel(para, function(ret){
+			if(E_NONE == ret[ERR_CODE]){
+				callback(mac, ruleList);
+			} else {
+				handleError(code);
+				closeLoading();
+				$(".close-btn").click();
+			}
+		});
+	}
+
+	function dayToCycle(day){
+		var strC = "0000000";
+		return strC.substr(0,day) + "1" + strC.substr(day,6-day);
+	}
+	function addDayToCycle(cycle, day){
+		return cycle.substr(0,day) + "1" + cycle.substr(day,6-day);
+	}
+
+	function getTimeCycle(mac, ruleList){
+		for(var i=0; i<ruleList.length; i++){
+			if(mac == ruleList[i].mac){
+				return ruleList[i].cycle;
+			}
+		}
+		return [];
+	}
+
+	function getRuleByMac(mac, ruleList){
+		for(var i=0; i<ruleList.length; i++){
+			if(mac == ruleList[i].mac){
+				return ruleList[i];
+			}
+		}
+		return [];
+	}
+
+	function setTimeCycle(mac, timeList, ruleList){
+		for(var i=0; i<ruleList.length; i++){
+			if(mac == ruleList[i].mac){
+				ruleList[i].cycle = JSON.parse(JSON.stringify(timeList));
+				return 0;
+			}
+		}
+		return 1;
+	}
+
+	function showSysTime(timeStr){
+		if (timeStr.length <= 0){
+			$("#SysTime").addClass("time-tip");
+			return label.noUpdateTime;
+		}else{
+			var dateObj = new Date(timeStr);
+			var weekday=new Array(7);
+			weekday[0]=label.Sunday;
+			weekday[1]=label.Monday;
+			weekday[2]=label.Tuesday;
+			weekday[3]=label.Wednesday;
+			weekday[4]=label.Thursday;
+			weekday[5]=label.Friday;
+			weekday[6]=label.Saturday;
+
+			$("#SysTime").removeClass("time-tip");
+			return timeStr + " " + weekday[dateObj.getDay()];
+		}
+	}
+})();
+</script>
+<div class="widget-con">
+	<p class="alert-title">{%label.accTime%}</p>
+	<div class="pick-note">
+		<span class="pick-mark"></span>
+		<span class="pick-note">{%label.accTime%}</span>
+	</div>
+	<i class="tip icon_close color-red close-btn hidden"></i>
+	<div class="time-pick">
+		<div id="TimePick"></div>
+		<div class="pick-tip">
+			<p class="system-time">{%label.sysTime%}{%label.colon%}<span id="SysTime"></span></p>
+		</div>
+		<div class="pick-tip">
+			<input id="SaveTime" class="btn btn-width" type="button" value="{%btn.save%}" />
+			<input id="CancelTime" class="btn btn-width-right" type="button" value="{%btn.cancel%}" />
+		</div>
+	</div>
+</div>

@@ -1,0 +1,84 @@
+#!/bin/sh /etc/rc.common
+
+START=99
+USE_PROCD=1
+
+url_queue_num=${1:-1}
+
+url_add_rule() {
+	local cfg="$1"
+	local rules="$2"
+	local prefix="$3"
+	local suffix="$4"
+	local url_queue_num="$5"
+	local mac
+
+	config_get mac $cfg mac
+
+	if [ -z "$mac" ]; then
+		return 1
+	fi
+
+	append $rules "$prefix" "$N"
+	append $rules "-m mac --mac-source $mac"
+	append $rules "$suffix"
+}
+
+start_firewall() {
+	stop_firewall
+	local enabled
+
+	config_load url_filter
+	config_get_bool enabled url_switch enabled 0
+
+	if [ "$enabled" != "1" ]; then
+		stop_firewall
+		return 1
+	fi
+
+	local urlctl_rules_dns
+	local urlctl_rules_http
+	local prefix="iptables -t mangle -A url_mangle"
+	local suffix1="-p udp --dport 53 -j NFQUEUE --queue-num $url_queue_num"
+	local suffix2="-p tcp --dport 80 -j NFQUEUE --queue-num $url_queue_num"
+	config_foreach url_add_rule devfilter urlctl_rules_dns "$prefix" "$suffix1"
+	config_foreach url_add_rule devfilter urlctl_rules_http "$prefix" "$suffix2"
+
+	sh << EOF
+	iptables -t mangle -N url_mangle
+	iptables -t mangle -I PREROUTING -j url_mangle
+	$urlctl_rules_dns
+	$urlctl_rules_http
+EOF
+}
+
+stop_firewall() {
+	iptables -t mangle -S |
+	grep '\-j url_mangle' |
+	sed -e 's/^-A/iptables -t mangle -w -D/' | sh
+	iptables -t mangle -S |
+	grep '^-N url_mangle' |
+	sed -e '/^-N/{s/^-N/-X/;H;s/-X/-F/}' -e '${p;g}' |
+	sed -n -e 's/^./iptables -t mangle &/p' | sh
+}
+
+start_service() {
+	start_firewall
+
+	if [ $? -eq 1 ];then
+		return 1
+	fi
+	procd_open_instance
+	procd_set_param command /usr/sbin/urlfilter $url_queue_num
+	procd_set_param respawn
+	procd_close_instance
+}
+
+stop_service() {
+	stop_firewall
+	killall -SIGUSR1 urlfilter
+}
+
+reload_service() {
+	restart
+}

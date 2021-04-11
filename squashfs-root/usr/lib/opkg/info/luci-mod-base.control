@@ -1,0 +1,9 @@
+Package: luci-mod-base
+Version: 1.0.0-1
+Depends: libc, luci-lib-web, luci-lib-ipkg
+Source: /home/jenkins/jenkins_job/workspace/SOP_K2P_V5.2/luci-ux
+Section: luci
+Maintainer: LuCI Development Team <luci@lists.subsignal.org>
+Architecture: all
+Installed-Size: 1355750
+Description:  unknown

@@ -1,0 +1,29 @@
+#!/bin/sh /etc/rc.common
+
+START=30
+
+start() {
+killall -9 mled.sh  2>/dev/null
+config_load light_manage
+local led_control
+local led_switch
+config_get led_control pagelight control
+config_get led_switch pagelight ignore
+
+if [ "$led_control" = "off" -o -z "$led_control" -o "$led_switch" = "0" ] ;then
+ icount=`ps -w |grep light_manage|grep -v grep|grep -v etc|wc -l`
+  if [ "$icount" -lt 1 ] ;then
+    light_manage &
+    sleep 3
+    uci set light_manage.pagelight.boot=1 
+  fi
+else
+    /root/mled.sh $led_control &
+    ps -w|grep light_manage|grep -v grep |grep -v etc|awk '{print $1}'|xargs kill 2>/dev/null
+fi
+
+}
+
+stop() {
+	killall -9 light_manage
+}
