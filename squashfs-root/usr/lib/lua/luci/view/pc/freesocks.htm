@@ -1,4 +1,5 @@
-<style type="text/css">ul.set-con-switch{margin-bottom:0}span.to{display:inline-block;vertical-align:middle;line-height:28px;font-size:14px;color:#4f5356;padding-left:5px;padding-right:5px}div.tab-con{font-size:14px;color:#4f5356;text-align:center;margin:40px 220px 10px}table.set-con{width:100%;border-collapse:collapse;table-layout:auto}.set-con-long{width:17%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.set-con-short{width:15%}input.text-con{color:#4f5356;height:34px;line-height:34px;width:85%;padding:0 .5em;font-size:14px;border:1px solid #DDD;border-radius:4px;text-align:center}li.text-tip{height:34px;line-height:34px;margin:0 0 4px;width:90%}li.text-con span.select-con{width:100%;padding:0;height:34px;line-height:31px}span.select span.sel-con{width:100%;line-height:31px;height:34px;text-align:center}li.text-tip ul.sel-opts-ul{width:100%}.boder-tr{border-bottom:1px solid #e7e7e7;height:40px;line-height:40px;background-color:#f4f4f4}ul.add-orange{color:#ff8000;margin-top:4px;font-size:32px;float:right;margin-right:30px;cursor:pointer}ul.add-gray{color:#bfbfbf;cursor:default}span.color-gray{color:#bfbfbf}span.handle-tip{display:inline-block;width:50%;height:30px;cursor:pointer}.table-height{height:40px;line-height:40px;border-bottom:1px solid #e7e7e7}p.note-str{text-align:left}</style>
+<style type="text/css">ul.set-con-switch{margin-bottom:0}span.to{display:inline-block;vertical-align:middle;line-height:28px;font-size:14px;color:#4f5356;padding-left:5px;padding-right:5px}div.tab-con{font-size:14px;color:#4f5356;text-align:center;margin:40px 220px 10px}table.set-con{width:100%;border-collapse:collapse;table-layout:auto}.set-con-long{width:17%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.set-con-short{width:15%}input.text-con{color:#4f5356;height:34px;line-height:34px;width:85%;padding:0 .5em;font-size:14px;border:1px solid #DDD;border-radius:4px;text-align:center}li.text-tip{height:34px;line-height:34px;margin:0 0 4px;width:90%}li.text-con span.select-con{width:100%;padding:0;height:34px;line-height:31px}span.select span.sel-con{width:100%;line-height:31px;height:34px;text-align:center}li.text-tip ul.sel-opts-ul{width:100%}.boder-tr{border-bottom:1px solid #e7e7e7;height:40px;line-height:40px;background-color:#f4f4f4}ul.add-orange{color:#ff8000;margin-top:4px;font-size:32px;float:right;margin-right:30px;cursor:pointer}ul.add-gray{color:#bfbfbf;cursor:default}span.color-gray{color:#bfbfbf}span.handle-tip{display:inline-block;width:50%;height:30px;cursor:pointer}.table-height{height:40px;line-height:40px;border-bottom:1px solid #e7e7e7}p.note-str{text-align:left}
+</style>
 <script type="text/javascript">
 //(function(){
 	<%
@@ -7,7 +8,7 @@
 		}
 		
 		local result = tpl_get_data(para, true)
-		local process_count = tonumber(luci.sys.exec("ps -w | grep freesocks |grep -v grep| wc -l"))
+		local process_count = tonumber(luci.sys.exec("/etc/init.d/freesocks status|grep running|wc -l"))
 		if process_count > 0 then
 			Run_str = "运行中"
 		else
