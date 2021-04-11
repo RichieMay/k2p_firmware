@@ -13,8 +13,12 @@ function check_freesocks_set_config(t,c,l,t,t,t)
 end
 
 function apply_freesocks_set_config(e,e,e,l,e,e)
-	if l.gfwlist then
-		nixio.fs.writefile("/etc/freesocks.d/gfwlist.conf", l.gfwlist:gsub("\r\n", "\n"))
+	if l.domain_rules then
+		nixio.fs.writefile("/etc/freesocks.d/domain_rules.conf", l.domain_rules:gsub("\r\n", "\n"))
+	end
+	
+	if l.ip_rules then
+		nixio.fs.writefile("/etc/freesocks.d/ip_rules.conf", l.ip_rules:gsub("\r\n", "\n"))
 	end
 	
 	return i.E_NONE, {wait_time = 2}

@@ -20,11 +20,11 @@ function apply_freesocks_config(e,e,e,l,e,e)
   e:commit("freesocks")
 
   if l.server_index=="0" then
-   luci.sys.call("/etc/init.d/openwrt_freesocks disable")
-   luci.sys.call("/etc/init.d/openwrt_freesocks stop")
+   luci.sys.call("/etc/init.d/freesocks disable")
+   luci.sys.call("/etc/init.d/freesocks stop")
   else
-   luci.sys.call("/etc/init.d/openwrt_freesocks enable")
-   luci.sys.call("/etc/init.d/openwrt_freesocks restart")
+   luci.sys.call("/etc/init.d/freesocks enable")
+   luci.sys.call("/etc/init.d/freesocks restart")
   end
 
   return i.E_NONE, {wait_time = 2}
@@ -76,5 +76,3 @@ function apply_freesocks_list_config(e,e,e,l,e,e)
   cursor:apply("freesocks", false, true)
   return i.E_NONE, {wait_time = 2}
 end
-
-

@@ -1,6 +1,6 @@
 #!/bin/sh /etc/rc.common
 #
-# Copyright (C) 2018 openwrt-freesocks
+# Copyright (C) 2018 freesocks
 #
 # This is free software, licensed under the GNU General Public License v3.
 # See /LICENSE for more information.
@@ -17,20 +17,37 @@ TGZ_PATH=/usr/share/freesocks/freesocks.tgz
 BIN_DIR=/var/etc
 BIN_PATH=$BIN_DIR/$NAME
 CONF=$BIN_DIR/$NAME.json
-GFW_CONF=/etc/freesocks.d/gfwlist.conf
-DNSMASQ_GFW_CONF=/tmp/dnsmasq.d/gfwlist.conf
+IP_RULES_CONF=/etc/freesocks.d/ip_rules.conf
+DOMAIN_RULES_CONF=/etc/freesocks.d/domain_rules.conf
+DNSMASQ_IPSET_CONF=/tmp/dnsmasq.d/dnsmasq_ipset.conf
 
 boot() {
   start
 }
 
-check_running(){
+check_running() {
     PID=`ps | grep -v grep | grep -i "${BIN_PATH}.\+-" | awk '{print $1}'`
     if [ ! -z "$PID" ]; then
         return 0
     else
         return 1
     fi
+}
+
+process_ipset() {
+    proxy_port=$(uci_get_config_by_type global 0 redir_port)
+    case "X$1" in
+        "Xcreate")
+            ipset create gfwlist hash:net
+            iptables -t nat -A PREROUTING -p tcp -m set --match-set gfwlist dst -j REDIRECT --to-port $proxy_port
+            ;;
+        "Xdestroy")
+            iptables -t nat -D PREROUTING -p tcp -m set --match-set gfwlist dst -j REDIRECT --to-port $proxy_port
+            ipset destroy gfwlist
+            ;;
+        *)
+            echo "param must be create or destroy"
+    esac 
 }
 
 #uci_get_config_by_type section_type section_index option
@@ -69,7 +86,15 @@ status(){
 
 restart () {
   stop
+  sleep 1
   start
+}
+
+append_ipset() {
+    grep -Ev "^$|#" ${IP_RULES_CONF} | while read rule
+    do
+        ipset add $rule
+    done
 }
 
 start() {
@@ -82,9 +107,17 @@ start() {
       exit 1
   fi
   
-  # 将gfwlist软连接到dnsmasq配置中,然后重启dnsmasq使其生效
-  if [ ! -r $DNSMASQ_GFW_CONF ]; then
-      ln -s $GFW_CONF $DNSMASQ_GFW_CONF
+  # 创建ipset
+  process_ipset create
+  
+  # 将iptables的ipset规则添加到gfwlist
+  if [ -r $IP_RULES_CONF ]; then
+      append_ipset
+  fi
+  
+  # 将dnsmasq的ipset规则软连接到dnsmasq配置中,然后重启dnsmasq使其生效
+  if [ ! -r $DNSMASQ_IPSET_CONF ]; then
+      ln -s $DOMAIN_RULES_CONF $DNSMASQ_IPSET_CONF
       /etc/init.d/dnsmasq restart
   fi
   
@@ -98,11 +131,15 @@ start() {
 }
 
 stop() {
-  # 将gfwlist从dnsmasq配置中删除,然后重启dnsmasq使其生效
-  if [ -r $DNSMASQ_GFW_CONF ]; then
-      rm -rf $DNSMASQ_GFW_CONF
+
+  # 将ipset规则从dnsmasq配置中删除,然后重启dnsmasq使其生效
+  if [ -r $DNSMASQ_IPSET_CONF ]; then
+      rm -rf $DNSMASQ_IPSET_CONF
       /etc/init.d/dnsmasq restart
   fi
+  
+  # 清除ipset
+  process_ipset destroy
   
   check_running
   if [ $? -eq 0 ]; then

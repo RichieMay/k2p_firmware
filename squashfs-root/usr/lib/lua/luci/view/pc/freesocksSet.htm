@@ -9,14 +9,31 @@
 <script type="text/javascript">
 $(function(){
     <%-
-      gfwlist=nixio.fs.readfile("/etc/freesocks.d/gfwlist.conf") or "# --------------GFW列表规则 --------------\n# 比如要添加www.xxxx.com到gfwlist列表中，写法如下：\n# server=/.xxxx.com/127.0.0.1#5353\n# ipset=/.xxxx.com/gfwlist\n# -------------------------------------------------"
+      domain_rules=nixio.fs.readfile("/etc/freesocks.d/domain_rules.conf") or "# -------------- gfwlist ipset rules for dnsmasq --------------\n# 比如要添加www.xxxx.com到gfwlist列表中，写法如下：\n# server=/.xxxx.com/127.0.0.1#5353\n# ipset=/.xxxx.com/gfwlist\n# -------------------------------------------------"
+      
+      ip_rules=nixio.fs.readfile("/etc/freesocks.d/ip_rules.conf") or "# -------------- gfwlist ipset rules for iptables --------------\n# 比如要添加IP(段)：xx.xx.xx.xx到gfwlist列表中，写法如下：\n# gfwlist xx.xx.xx.xx\n# -------------------------------------------------"
     -%>
 	
-    $("#Save").click(function(){
+    $("#SaveDomain").click(function(){
       var param = {};
       param.freesocks_set = {};
       param.freesocks_set.config = {};
-      param.freesocks_set.config.gfwlist = $("#gfw_content").val();
+      param.freesocks_set.config.domain_rules = $("#domain_rules").val();
+
+      showLoading(label.saving);
+      apiSet(param, function(ret) {
+        $.setTimeout(function() {
+          closeLoading();
+          alert("保存完成！需要重启Freesocks生效！");
+        }, ret[K_MODULE].freesocks_set.config.wait_time * 1000);
+      });
+    });
+    
+    $("#SaveIP").click(function(){
+      var param = {};
+      param.freesocks_set = {};
+      param.freesocks_set.config = {};
+      param.freesocks_set.config.ip_rules = $("#ip_rules").val();
 
       showLoading(label.saving);
       apiSet(param, function(ret) {
@@ -50,11 +67,23 @@ $(function(){
 <div class="set-con below-head"  style="margin:17px 6px 8px 0;">
 	<li>
 		<p class="set-con-desc" style="text-align: center;">
-			<label class="tip-lbl">GFW列表规则</label>
+			<label class="tip-lbl">域名列表规则</label>
 		</p>
-		<textarea  style="width: 85%;margin-left:50px;"  id="gfw_content" rows="25"><%=gfwlist%></textarea>
+		<textarea  style="width: 85%;margin-left:50px;"  id="domain_rules" rows="20"><%=domain_rules%></textarea>
 	<li>
 </div>
 <div class="btn-con" style="border-bottom: 1px solid #DDD;">
-	<input id="Save" class="btn"   type="button" value="保存">
+	<input id="SaveDomain" class="btn" type="button" value="保存">
+</div>
+
+<div class="set-con below-head"  style="margin:17px 6px 8px 0;">
+	<li>
+		<p class="set-con-desc" style="text-align: center;">
+			<label class="tip-lbl">IP列表规则</label>
+		</p>
+		<textarea  style="width: 85%;margin-left:50px;"  id="ip_rules" rows="20"><%=ip_rules%></textarea>
+	<li>
+</div>
+<div class="btn-con" style="border-bottom: 1px solid #DDD;">
+	<input id="SaveIP" class="btn" type="button" value="保存">
 </div>
